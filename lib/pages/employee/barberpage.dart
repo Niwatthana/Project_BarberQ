@@ -1,5 +1,6 @@
 import 'package:barberapp/loginpage.dart';
 import 'package:barberapp/pages/employee/profilebarber.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class EmployeePage extends StatefulWidget {
@@ -21,7 +22,7 @@ class _EmployeePageState extends State<EmployeePage> {
           PopupMenuButton<String>(
             icon: Icon(Icons.account_circle),
             onSelected: (String result) {
-              print(result);
+              // print(result);
               switch (result) {
                 case 'history':
                   // Navigate to customer booking history page
@@ -29,7 +30,7 @@ class _EmployeePageState extends State<EmployeePage> {
                       context,
                       MaterialPageRoute(
                           builder: (context) => BarberProfile(
-                                docid: 'username',
+                                docid: FirebaseAuth.instance.currentUser!.uid,
                               )));
                   break;
                 case 'logout':

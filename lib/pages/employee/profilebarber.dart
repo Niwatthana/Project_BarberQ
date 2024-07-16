@@ -19,7 +19,7 @@ class _BarberProfileState extends State<BarberProfile> {
   final TextEditingController _telController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  bool _isPasswordVisible = false;
+  // bool _isPasswordVisible = false;
   File? _image;
   String? _imageUrl;
 
@@ -98,7 +98,9 @@ class _BarberProfileState extends State<BarberProfile> {
     try {
       final storageRef = FirebaseStorage.instance
           .ref()
-          .child('profile_images/${DateTime.now().toIso8601String()}.jpg');
+          .child('profile_images/${widget.docid}.jpg');
+
+          
       await storageRef.putFile(_image!);
       final url = await storageRef.getDownloadURL();
       setState(() {
@@ -159,16 +161,8 @@ class _BarberProfileState extends State<BarberProfile> {
               ),
               SizedBox(height: 20),
               TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 20),
-              TextField(
                 controller: _usernameController,
+                readOnly: true,
                 decoration: InputDecoration(
                   labelText: 'Username',
                   prefixIcon: Icon(Icons.person),
@@ -177,7 +171,18 @@ class _BarberProfileState extends State<BarberProfile> {
               ),
               SizedBox(height: 20),
               TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Name',
+                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
+              SizedBox(height: 20),
+              TextField(
                 controller: _telController,
+                keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   labelText: 'Phone',
                   prefixIcon: Icon(Icons.phone),
@@ -185,27 +190,27 @@ class _BarberProfileState extends State<BarberProfile> {
                 ),
               ),
               SizedBox(height: 20),
-              TextField(
-                controller: _passwordController,
-                obscureText: !_isPasswordVisible,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock),
-                  border: OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
-                    },
-                  ),
-                ),
-              ),
+              // TextField(
+              //   controller: _passwordController,
+              //   obscureText: !_isPasswordVisible,
+              //   decoration: InputDecoration(
+              //     labelText: 'Password',
+              //     prefixIcon: Icon(Icons.lock),
+              //     border: OutlineInputBorder(),
+              //     suffixIcon: IconButton(
+              //       icon: Icon(
+              //         _isPasswordVisible
+              //             ? Icons.visibility
+              //             : Icons.visibility_off,
+              //       ),
+              //       onPressed: () {
+              //         setState(() {
+              //           _isPasswordVisible = !_isPasswordVisible;
+              //         });
+              //       },
+              //     ),
+              //   ),
+              // ),
               SizedBox(height: 30),
               ElevatedButton(
                 onPressed: () async {
@@ -215,9 +220,7 @@ class _BarberProfileState extends State<BarberProfile> {
                         .doc(widget.docid)
                         .update({
                       'name': _nameController.text,
-                      'username': _usernameController.text,
                       'tel': _telController.text,
-                      'password': _passwordController.text,
                     });
                     if (_image != null) {
                       await uploadImage();

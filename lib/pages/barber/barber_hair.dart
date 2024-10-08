@@ -1,10 +1,8 @@
 import 'package:barberapp/loginpage.dart';
-import 'package:barberapp/pages/owner/owner_addhair.dart';
-import 'package:barberapp/pages/owner/owner_edithair.dart';
-import 'package:barberapp/pages/owner/owner_epy.dart';
-import 'package:barberapp/pages/owner/ownerpage.dart';
-import 'package:barberapp/pages/owner/ownershop.dart';
-import 'package:barberapp/pages/owner/profileowner.dart';
+import 'package:barberapp/pages/barber/addhairbarber.dart';
+import 'package:barberapp/pages/barber/barber_edithair.dart';
+import 'package:barberapp/pages/barber/barberpage.dart';
+import 'package:barberapp/pages/barber/profilebarber.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -12,24 +10,23 @@ import 'package:flutter/material.dart';
 import 'package:quickalert/models/quickalert_type.dart';
 import 'package:quickalert/widgets/quickalert_dialog.dart';
 
-class Ownerhair extends StatefulWidget {
-  const Ownerhair({Key? key}) : super(key: key);
+class BarberHair extends StatefulWidget {
+  const BarberHair({Key? key}) : super(key: key);
 
   @override
-  State<Ownerhair> createState() => _OwnerhairState();
+  State<BarberHair> createState() => _BarberHairState();
 }
 
-class _OwnerhairState extends State<Ownerhair> {
+class _BarberHairState extends State<BarberHair> {
   int _selectedIndex = 0;
 
   StreamBuilder showhaircut() {
     return StreamBuilder<QuerySnapshot>(
       // stream: FirebaseFirestore.instance.collection("Haircuts").where("ownerid").snapshots(),
       stream: FirebaseFirestore.instance
-          .collection("Haircuts")
-          .where("owner_id", isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+          .collection("BarberHaircuts")
+          .where("barber_id", isEqualTo: FirebaseAuth.instance.currentUser!.uid)
           .snapshots(),
-
       builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
         if (snapshot.hasError) {
           return Text('Something went wrong');
@@ -47,16 +44,9 @@ class _OwnerhairState extends State<Ownerhair> {
 
             return Card(
               child: ListTile(
-                leading: Image.network(data['shop_img'],
+                leading: Image.network(data['barber_img'],
                     width: 50, height: 50, fit: BoxFit.cover),
                 title: Text(data['haircut_name']),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Price: ${data['price']}'),
-                    Text('Time: ${data['time']}'),
-                  ],
-                ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -71,7 +61,7 @@ class _OwnerhairState extends State<Ownerhair> {
                             context,
                             MaterialPageRoute(
                                 builder: (context) =>
-                                    EditHairStyle(hairid: document.id)));
+                                    EditBarberStyle(hairid: document.id)));
                       },
                     ),
                     IconButton(
@@ -123,7 +113,7 @@ class _OwnerhairState extends State<Ownerhair> {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => OwnerProfile(
+                          builder: (context) => BarberProfile(
                                 docid: FirebaseAuth.instance.currentUser!.uid,
                               )));
                   break;
@@ -175,8 +165,8 @@ class _OwnerhairState extends State<Ownerhair> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-              context, MaterialPageRoute(builder: (context) => AddHairStyle()));
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => Addbarberhair()));
         },
         child: const Icon(Icons.add),
       ),
@@ -199,11 +189,11 @@ class _OwnerhairState extends State<Ownerhair> {
                 });
 
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => OwnerPage()));
+                    MaterialPageRoute(builder: (context) => BarberPage()));
               },
             ),
             ListTile(
-              title: const Text('ร้านตัดผมของฉัน'),
+              title: const Text('รายละเอียดทรงผม'),
               selected: _selectedIndex == 1,
               onTap: () {
                 setState(() {
@@ -211,49 +201,29 @@ class _OwnerhairState extends State<Ownerhair> {
                 });
 
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => Ownershop()));
+                    MaterialPageRoute(builder: (context) => BarberHair()));
               },
             ),
             ListTile(
-              title: const Text('ช่างตัดผม'),
+              title: const Text('ข้อมูลการจองคิว'),
               selected: _selectedIndex == 2,
               onTap: () {
                 setState(() {
                   _selectedIndex = 2;
                 });
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => OwnerEmployee()));
+                // Navigator.push(context,
+                //     MaterialPageRoute(builder: (context) => OwnerEmployee()));
               },
             ),
             ListTile(
-              title: const Text('ทรงผม'),
+              title: const Text('รายงานสรุป'),
               selected: _selectedIndex == 3,
               onTap: () {
                 setState(() {
                   _selectedIndex = 3;
                 });
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => Ownerhair()));
-              },
-            ),
-            ListTile(
-              title: const Text('การจองของลูกค้า'),
-              selected: _selectedIndex == 4,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 4;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: const Text('รายงานสรุป'),
-              selected: _selectedIndex == 5,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 5;
-                });
-                Navigator.pop(context);
+                // Navigator.push(context,
+                //     MaterialPageRoute(builder: (context) => BarberHair()));
               },
             ),
           ],
@@ -300,9 +270,8 @@ class _OwnerhairState extends State<Ownerhair> {
   }
 
   void _addhair(String haircut_name, String price) {
-    FirebaseFirestore.instance.collection('Haircuts').add({
+    FirebaseFirestore.instance.collection('BarberHaircuts').add({
       'haircut_name': haircut_name,
-      'price': price,
       // เพิ่มฟิลด์อื่น ๆ ตามต้องการ
     }).then((value) {
       if (mounted) {}
@@ -313,7 +282,7 @@ class _OwnerhairState extends State<Ownerhair> {
 
   Future<void> deleteHaircut(String docid) async {
     FirebaseFirestore.instance
-        .collection("Haircuts")
+        .collection("BarberHaircuts")
         .doc(docid)
         .delete()
         .then((value) {
@@ -323,7 +292,7 @@ class _OwnerhairState extends State<Ownerhair> {
     });
     await FirebaseStorage.instance
         .ref()
-        .child("barbershop/${docid}.jpg")
+        .child("barberhair/${docid}.jpg")
         .delete();
   }
 }
@@ -331,14 +300,10 @@ class _OwnerhairState extends State<Ownerhair> {
 class HaircutCard extends StatelessWidget {
   final String imageUrl;
   final String haircutName;
-  final String price;
-  final String time;
 
   const HaircutCard({
     required this.imageUrl,
     required this.haircutName,
-    required this.price,
-    required this.time,
   });
 
   @override
@@ -363,8 +328,6 @@ class HaircutCard extends StatelessWidget {
                   haircutName,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                Text('ราคา $price บาท'),
-                Text('เวลาในการตัด $time นาที'),
               ],
             ),
           ],

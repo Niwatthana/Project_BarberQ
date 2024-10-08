@@ -6,19 +6,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:quickalert/models/quickalert_type.dart';
 import 'package:quickalert/widgets/quickalert_dialog.dart';
 
-class EditHairStyle extends StatefulWidget {
-  const EditHairStyle({super.key, required this.hairid});
+class EditBarberStyle extends StatefulWidget {
+  const EditBarberStyle({super.key, required this.hairid});
 
   final String hairid;
 
   @override
-  State<EditHairStyle> createState() => _EditHairStyleState();
+  State<EditBarberStyle> createState() => _EditBarberStyleState();
 }
 
-class _EditHairStyleState extends State<EditHairStyle> {
-  TextEditingController _haircutNameController = TextEditingController();
-  TextEditingController _priceController = TextEditingController();
-  TextEditingController _timeController = TextEditingController();
+class _EditBarberStyleState extends State<EditBarberStyle> {
+  final TextEditingController _haircutNameController = TextEditingController();
   File? selectedImage;
   String? urlImage;
   bool _isLoading = false;
@@ -43,7 +41,7 @@ class _EditHairStyleState extends State<EditHairStyle> {
         // Generate a unique file name for each image
         String fileName = widget.hairid;
         Reference ref =
-            FirebaseStorage.instance.ref().child('barbershop/$fileName.jpg');
+            FirebaseStorage.instance.ref().child('barberhair/$fileName.jpg');
 
         SettableMetadata metadata = SettableMetadata(
           contentType: 'image/jpeg',
@@ -56,18 +54,15 @@ class _EditHairStyleState extends State<EditHairStyle> {
 
         // Save data to Firestore
         CollectionReference docRef =
-            FirebaseFirestore.instance.collection('Haircuts');
+            FirebaseFirestore.instance.collection('BarberHaircuts');
         await docRef.doc(widget.hairid).update({
-          'shop_img': downloadUrl,
+          'barber_img': downloadUrl,
           'haircut_name': _haircutNameController.text.trim(),
-          'price': double.parse(_priceController.text.trim()),
-          'time': double.parse(_timeController.text.trim()),
         });
 
         // Clear the input fields and reset the state
         _haircutNameController.clear();
-        _priceController.clear();
-        _timeController.clear();
+
         setState(() {
           selectedImage = null;
           _isLoading = false;
@@ -75,33 +70,32 @@ class _EditHairStyleState extends State<EditHairStyle> {
 
         // Show a success message or navigate to another screen
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
-          duration: Duration(seconds: 2),
+          content: const Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
+          duration: const Duration(seconds: 2),
         ));
       } else {
         CollectionReference docRef =
-            FirebaseFirestore.instance.collection('Haircuts');
+            FirebaseFirestore.instance.collection('BarberHaircuts');
         await docRef.doc(widget.hairid).update({
           'haircut_name': _haircutNameController.text.trim(),
-          'price': double.parse(_priceController.text.trim()),
-          'time': double.parse(_timeController.text.trim()),
         });
+
         // Clear the input fields and reset the state
         setState(() {
           _isLoading = false;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
-          duration: Duration(seconds: 2),
+          content: const Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
+          duration: const Duration(seconds: 2),
         ));
       }
     } catch (error) {
       // Handle any errors that occur during the upload process
       print('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: $error');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('เกิดข้อผิดพลาดในการบันทึกข้อมูล'),
-        duration: Duration(seconds: 2),
+        content: const Text('เกิดข้อผิดพลาดในการบันทึกข้อมูล'),
+        duration: const Duration(seconds: 2),
       ));
     } finally {
       setState(() {
@@ -110,27 +104,24 @@ class _EditHairStyleState extends State<EditHairStyle> {
     }
   }
 
-  Future<void> callData() async {
+  Future<void> _loadData() async {
     DocumentSnapshot<Map<String, dynamic>> haircut = await FirebaseFirestore
         .instance
-        .collection("Haircuts")
+        .collection("BarberHaircuts")
         .doc(widget.hairid)
         .get();
-    print(haircut.data());
+
     var data = haircut.data();
     setState(() {
-      _haircutNameController =
-          TextEditingController(text: data!['haircut_name']);
-      _priceController = TextEditingController(text: data['price'].toString());
-      _timeController = TextEditingController(text: data['time'].toString());
-      urlImage = data['shop_img'];
+      _haircutNameController.text = data!['haircut_name'];
+      urlImage = data['barber_img'];
     });
   }
 
   @override
   void initState() {
     super.initState();
-    callData();
+    _loadData();
   }
 
   @override
@@ -144,8 +135,8 @@ class _EditHairStyleState extends State<EditHairStyle> {
         children: [
           Container(
             height: 700,
-            padding: EdgeInsets.only(top: 15),
-            decoration: BoxDecoration(
+            padding: const EdgeInsets.only(top: 15),
+            decoration: const BoxDecoration(
               color: Color(0xFFEDECF2),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(35),
@@ -165,35 +156,24 @@ class _EditHairStyleState extends State<EditHairStyle> {
                       height: 200,
                       fit: BoxFit.cover,
                     )
-                  else
+                  else if (urlImage != null)
                     Image.network(
                       urlImage!,
                       width: 350,
                       height: 200,
                       fit: BoxFit.cover,
                     ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: _pickImageFromGallery,
-                    child: Text('อัปโหลดรูปภาพ'),
+                    child: const Text('อัปโหลดรูปภาพ'),
                   ),
                   TextField(
                     controller: _haircutNameController,
-                    decoration: InputDecoration(labelText: 'ชื่อทรงผม'),
+                    decoration: const InputDecoration(labelText: 'ชื่อทรงผม'),
                   ),
-                  TextField(
-                    controller: _priceController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(labelText: 'ราคา'),
-                  ),
-                  TextField(
-                    controller: _timeController,
-                    keyboardType: TextInputType.number,
-                    decoration:
-                        InputDecoration(labelText: 'เวลาในการตัด (นาที)'),
-                  ),
-                  SizedBox(height: 16),
-                  if (_isLoading) CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  if (_isLoading) const CircularProgressIndicator(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -201,28 +181,25 @@ class _EditHairStyleState extends State<EditHairStyle> {
                         onPressed: () {
                           Navigator.pop(context);
                         },
-                        child: Text('ยกเลิก'),
+                        child: const Text('ยกเลิก'),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       ElevatedButton(
                         onPressed: () {
-                          if (_haircutNameController.text.trim().isNotEmpty &&
-                              _priceController.text.trim().isNotEmpty &&
-                              _timeController.text.trim().isNotEmpty) {
+                          if (_haircutNameController.text.trim().isNotEmpty) {
                             _uploadImage();
                           } else {
                             QuickAlert.show(
                               context: context,
                               type: QuickAlertType.error,
                               title: 'ผิดพลาด!',
-                              text:
-                                  'ไม่สามารถเพิ่มข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+                              text: 'ไม่สามารถแก้ไขข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
                               confirmBtnText: 'ตกลง',
-                              confirmBtnColor: Color.fromARGB(255, 255, 0, 0),
+                              confirmBtnColor: const Color.fromARGB(255, 255, 0, 0),
                             );
                           }
                         },
-                        child: Text('เพิ่ม'),
+                        child: const Text('แก้ไข'),
                       ),
                     ],
                   ),

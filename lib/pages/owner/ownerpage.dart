@@ -1,4 +1,9 @@
+import 'package:barberapp/pages/owner/owner_bookinguser.dart';
 import 'package:barberapp/pages/owner/owner_hair.dart';
+import 'package:barberapp/pages/owner/owner_invite.dart';
+import 'package:barberapp/pages/owner/owner_summaryreport.dart';
+import 'package:barberapp/pages/owner/profileowner.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:barberapp/loginpage.dart';
 import 'package:barberapp/pages/owner/owner_epy.dart';
@@ -26,6 +31,12 @@ class _OwnerPageState extends State<OwnerPage> {
               switch (result) {
                 case 'history':
                   // Navigate to customer booking history page
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => OwnerProfile(
+                                docid: FirebaseAuth.instance.currentUser!.uid,
+                              )));
                   break;
                 case 'logout':
                   showLogoutDialog(context);
@@ -137,7 +148,10 @@ class _OwnerPageState extends State<OwnerPage> {
                 setState(() {
                   _selectedIndex = 5;
                 });
-                Navigator.pop(context);
+                Navigator.pop(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => SummaryReproState()));
               },
             ),
           ],
@@ -165,6 +179,19 @@ class MenuGrid extends StatelessWidget {
             onPressed: () {
               Navigator.push(context,
                   MaterialPageRoute(builder: (context) => Ownershop()));
+            },
+          ),
+          MenuButton(
+            icon: Image.asset(
+              'assets/icons/barber.png',
+              width: 80,
+              height: 80,
+            ),
+            label: 'ส่งคำเชิญ',
+            color: Colors.black,
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => OwnerInvite()));
             },
           ),
           MenuButton(
@@ -204,6 +231,8 @@ class MenuGrid extends StatelessWidget {
             color: Colors.black,
             onPressed: () {
               // Handle the action for 'การจองของลูกค้า'
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => OwnerBookingUser()));
             },
           ),
           MenuButton(
@@ -215,7 +244,8 @@ class MenuGrid extends StatelessWidget {
             label: 'รายงานสรุป',
             color: Colors.black,
             onPressed: () {
-              // Handle the action for 'รายงานสรุป'
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => SummaryReproState()));
             },
           ),
         ],

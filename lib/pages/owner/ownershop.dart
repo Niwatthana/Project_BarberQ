@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:barberapp/loginpage.dart';
 import 'package:barberapp/pages/owner/owner_epy.dart';
 import 'package:barberapp/pages/owner/owner_hair.dart';
 import 'package:barberapp/pages/owner/ownerpage.dart';
+import 'package:barberapp/pages/owner/profileowner.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -18,7 +20,12 @@ class Ownershop extends StatefulWidget {
 }
 
 class _OwnershopState extends State<Ownershop> {
-  final TextEditingController _detailsController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _shopNameController = TextEditingController();
+  final TextEditingController _telController = TextEditingController();
+  final TextEditingController _latController = TextEditingController();
+  final TextEditingController _longController = TextEditingController();
+
   Uint8List? _image;
   File? selectedImage;
   int _selectedIndex = 0;
@@ -26,10 +33,43 @@ class _OwnershopState extends State<Ownershop> {
   String? _imageUrl; // Variable to store the image URL
   double lat = 0, long = 0;
 
+  Future<void> fetchOwnerShopData() async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> ownershop = await FirebaseFirestore
+          .instance
+          .collection('BarberShops')
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .get();
+      if (ownershop.exists) {
+        var data = ownershop.data();
+        setState(() {
+          _shopNameController.text = data!['shop_name'];
+          _telController.text = data['tel'];
+          _addressController.text = data['address'];
+          _imageUrl = data['shop_img'];
+
+          lat = double.parse(data['latitude']);
+          long = double.parse(data['longitude']);
+          _latController.text = lat.toString();
+          _longController.text = long.toString();
+        });
+      } else {
+        getPosition();
+        print("No such document!");
+      }
+    } catch (e) {
+      print("Error fetching user data: $e");
+    }
+  }
+
+  void initialize() async {
+    await fetchOwnerShopData();
+  }
+
   @override
   void initState() {
-    getPosition();
     super.initState();
+    initialize();
   }
 
   void getPosition() async {
@@ -38,6 +78,8 @@ class _OwnershopState extends State<Ownershop> {
     setState(() {
       lat = position.latitude;
       long = position.longitude;
+      _latController.text = lat.toString();
+      _longController.text = long.toString();
     });
   }
 
@@ -83,7 +125,7 @@ class _OwnershopState extends State<Ownershop> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("เมนู"),
+        title: const Text("ร้านตัดผมของฉัน"),
         actions: <Widget>[
           PopupMenuButton<String>(
             icon: Icon(Icons.account_circle),
@@ -91,6 +133,12 @@ class _OwnershopState extends State<Ownershop> {
               switch (result) {
                 case 'history':
                   // Navigate to customer booking history page
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => OwnerProfile(
+                                docid: FirebaseAuth.instance.currentUser!.uid,
+                              )));
                   break;
                 case 'logout':
                   showLogoutDialog(context);
@@ -110,127 +158,163 @@ class _OwnershopState extends State<Ownershop> {
           ),
         ],
       ),
-      body: ListView(
-        shrinkWrap: true,
-        children: [
-          Container(
-            height: 700,
-            padding: EdgeInsets.only(top: 15),
-            decoration: BoxDecoration(
-              color: Color(0xFFEDECF2),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(35),
-                topRight: Radius.circular(35),
-              ),
-            ),
-            child: Column(
-              children: [
-                Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      showImagePickerOption(context);
-                    },
-                    child: CircleAvatar(
-                      radius: 55,
-                      backgroundColor: Color(0xffFDCF09),
-                      child: _image != null
+      body: Container(
+        // height: 700,
+        padding: EdgeInsets.only(top: 15),
+        decoration: BoxDecoration(
+          color: Color(0xFFEDECF2),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(35),
+            topRight: Radius.circular(35),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Center(
+              child: GestureDetector(
+                onTap: () {
+                  showImagePickerOption(context);
+                },
+                child: CircleAvatar(
+                  radius: 55,
+                  backgroundColor: Color(0xffFDCF09),
+                  child: _image != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(50),
+                          child: Image.memory(
+                            _image!,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : _imageUrl != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(50),
-                              child: Image.memory(
-                                _image!,
+                              child: Image.network(
+                                _imageUrl!,
                                 width: 100,
                                 height: 100,
                                 fit: BoxFit.cover,
                               ),
                             )
-                          : _imageUrl != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(50),
-                                  child: Image.network(
-                                    _imageUrl!,
-                                    width: 100,
-                                    height: 100,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : Container(
-                                  decoration: BoxDecoration(
-                                      color: Colors.grey[200],
-                                      borderRadius: BorderRadius.circular(50)),
-                                  width: 100,
-                                  height: 100,
-                                  child: Icon(
-                                    Icons.camera_alt,
-                                    color: Colors.grey[800],
-                                  ),
-                                ),
-                    ),
-                  ),
+                          : Container(
+                              decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(50)),
+                              width: 100,
+                              height: 100,
+                              child: Icon(
+                                Icons.camera_alt,
+                                color: Colors.grey[800],
+                              ),
+                            ),
                 ),
-                SizedBox(height: 20),
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'ชื่อร้าน',
+              style: TextStyle(fontSize: 18),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: _shopNameController,
+              decoration: InputDecoration(
+                hintText: 'กรุณากรอกชื่อร้าน',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'เบอร์โทร',
+              style: TextStyle(fontSize: 18),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: _telController,
+              decoration: InputDecoration(
+                hintText: 'กรุณากรอกเบอร์โทร',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'รายละเอียดร้าน',
+              style: TextStyle(fontSize: 18),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: _addressController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'โปรดกรอกรายละเอียดของร้าน',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            // SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Text(
-                  'รายละเอียดร้าน',
+                  'ตำแหน่งที่ตั้ง',
                   style: TextStyle(fontSize: 18),
                 ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: _detailsController,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: 'โปรดกรอกรายละเอียดของร้าน',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Row(
-                  children: <Widget>[
-                    Icon(Icons.gps_fixed),
-                    SizedBox(width: 10),
-                    GestureDetector(
-                      child: Text(
-                        'gps ของร้าน: lat: $lat, long: $long',
-                        style: TextStyle(fontSize: 16, color: Colors.blue),
-                      ),
-                    ),
-                  ],
-                ),
-                Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: <Widget>[
-                    ElevatedButton(
-                      onPressed: () {
-                        // handle submit
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        minimumSize: Size(150, 50),
-                      ),
-                      child: Text(
-                        'ยกเลิก',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _uploadImage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        minimumSize: Size(150, 50),
-                      ),
-                      child: _isLoading
-                          ? CircularProgressIndicator()
-                          : Text(
-                              'บันทึก',
-                              style:
-                                  TextStyle(color: Colors.black, fontSize: 18),
-                            ),
-                    ),
-                  ],
-                ),
+                ElevatedButton.icon(
+                  onPressed: getPosition,
+                  label: Text("ตำแหน่งปัจจุบัน"),
+                  icon: Icon(Icons.location_on_outlined),
+                )
               ],
             ),
-          ),
-        ],
+            SizedBox(height: 5),
+            TextFormField(
+              controller: _latController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(label: Text("ละติจูด")),
+            ),
+            TextFormField(
+                controller: _longController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(label: Text("ละติจูด"))),
+            Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: () {
+                    // handle submit
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    minimumSize: Size(150, 50),
+                  ),
+                  child: Text(
+                    'ยกเลิก',
+                    style: TextStyle(color: Colors.black, fontSize: 18),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _uploadImage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    minimumSize: Size(150, 50),
+                  ),
+                  child: _isLoading
+                      ? CircularProgressIndicator()
+                      : Text(
+                          'บันทึก',
+                          style: TextStyle(color: Colors.black, fontSize: 18),
+                        ),
+                ),
+                const Spacer(),
+                // showownershop(),
+              ],
+            ),
+          ],
+        ),
       ),
       drawer: Drawer(
         child: ListView(
@@ -392,12 +476,14 @@ class _OwnershopState extends State<Ownershop> {
   }
 
   Future<void> _uploadImage() async {
+    print("is in _upload Image");
     setState(() {
       _isLoading = true;
     });
 
     try {
       if (selectedImage != null) {
+        print('check selected image');
         // Upload image to Firebase Storage
         String fileName = FirebaseAuth.instance.currentUser!.uid;
         Reference ref =
@@ -417,16 +503,29 @@ class _OwnershopState extends State<Ownershop> {
             .collection('BarberShops')
             .doc(FirebaseAuth.instance.currentUser!.uid);
         await docRef.set({
-          'test': "e-gill",
+          'shop_name': _shopNameController.text,
+          'owner_id': FirebaseAuth.instance.currentUser!.uid,
+          'tel': _telController.text,
           'shop_img': downloadUrl,
-          'details': _detailsController.text,
-          'latitude': lat,
-          'longitude': long,
+          'address': _addressController.text,
+          'latitude': _latController.text,
+          'longitude': _longController.text,
         });
 
         // Set the uploaded image URL to the state variable
         setState(() {
           _imageUrl = downloadUrl;
+        });
+      } else {
+        DocumentReference docRef = FirebaseFirestore.instance
+            .collection('BarberShops')
+            .doc(FirebaseAuth.instance.currentUser!.uid);
+        await docRef.update({
+          'shop_name': _shopNameController.text,
+          'tel': _telController.text,
+          'address': _addressController.text,
+          'latitude': _latController.text,
+          'longitude': _longController.text,
         });
       }
 
@@ -438,9 +537,9 @@ class _OwnershopState extends State<Ownershop> {
       // });
 
       // Clear the input fields and reset the state
-      _detailsController.clear();
+      // _addressController.clear();
       setState(() {
-        _image = null;
+        // _image = null;
         selectedImage = null;
         _isLoading = false;
       });
@@ -468,23 +567,29 @@ class _OwnershopState extends State<Ownershop> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('ยืนยันการออกจากระบบ'),
-          content: Text('คุณต้องการที่จะออกจากระบบหรือไม่?'),
+          backgroundColor: Colors.white, // Background color of the AlertDialog
+          title: Text('ออกจากระบบ',
+              style: TextStyle(color: Colors.red)), // Title text color
+          content: Text('ออกจากระบบแล้ว',
+              style: TextStyle(color: Colors.black)), // Content text color
           actions: <Widget>[
             TextButton(
-              child: Text('ยกเลิก'),
+              child: Text('ยกเลิก',
+                  style: TextStyle(
+                      color: Colors.grey)), // Cancel button text color
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Close the AlertDialog
               },
             ),
             TextButton(
-              child: Text('ยืนยัน'),
+              child: Text('ตกลง',
+                  style:
+                      TextStyle(color: Colors.green)), // OK button text color
               onPressed: () {
-                // Implement logout functionality
-                Navigator.of(context).pop();
-                // Example:
-                // FirebaseAuth.instance.signOut();
-                // Navigator.of(context).pushReplacementNamed('/login');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
               },
             ),
           ],

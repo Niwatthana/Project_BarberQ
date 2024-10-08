@@ -1,5 +1,5 @@
-import 'package:barberapp/homepage.dart';
-import 'package:barberapp/pages/employee/barberpage.dart';
+import 'package:barberapp/pages/barber/barberpage.dart';
+import 'package:barberapp/pages/cutomer/homecutomer.dart';
 import 'package:barberapp/pages/owner/ownerpage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -73,14 +73,14 @@ class _LoginPageState extends State<LoginPage> {
           text: 'เข้าสู่ระบบสำเร็จ!',
           confirmBtnText: 'ตกลง',
           showConfirmBtn: false,
-          autoCloseDuration: const Duration(seconds: 3),
+          autoCloseDuration: const Duration(seconds: 1),
         );
         var role = user.data()!["role"];
         switch (role) {
           case "Customer":
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => MyHomePage()),
+              MaterialPageRoute(builder: (context) => HomeCustomer()),
             );
             print("Customer");
             break;
@@ -88,7 +88,7 @@ class _LoginPageState extends State<LoginPage> {
             // Navigate to EmployeePage
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => EmployeePage()),
+              MaterialPageRoute(builder: (context) => BarberPage()),
             );
             print("Barber");
             break;

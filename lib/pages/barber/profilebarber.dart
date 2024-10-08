@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -17,41 +16,10 @@ class _BarberProfileState extends State<BarberProfile> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _telController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _featureController = TextEditingController();
 
-  // bool _isPasswordVisible = false;
   File? _image;
   String? _imageUrl;
-
-  StreamBuilder shownameuser() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection("Users").snapshots(),
-      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-        if (snapshot.hasError) {
-          return Text('Something went wrong');
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Text("Loading");
-        }
-
-        return Column(
-          children: snapshot.data!.docs.map((DocumentSnapshot document) {
-            Map<String, dynamic> data =
-                document.data()! as Map<String, dynamic>;
-            print(data['username']);
-            return ListTile(
-              title: Text(data['username']),
-              subtitle: Text(data['tel'].toString()),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
 
   Future<void> fetchUserData() async {
     try {
@@ -66,8 +34,8 @@ class _BarberProfileState extends State<BarberProfile> {
           _nameController.text = data!['name'];
           _usernameController.text = data['username'];
           _telController.text = data['tel'];
-          _passwordController.text = data['password'];
           _imageUrl = data['imageUrl'];
+          _featureController.text = data['feature']; // Load the feature
         });
       } else {
         print("No such document!");
@@ -100,8 +68,10 @@ class _BarberProfileState extends State<BarberProfile> {
           .ref()
           .child('profile_images/${widget.docid}.jpg');
 
-          
-      await storageRef.putFile(_image!);
+      SettableMetadata metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+      );
+      await storageRef.putFile(_image!, metadata);
       final url = await storageRef.getDownloadURL();
       setState(() {
         _imageUrl = url;
@@ -110,8 +80,12 @@ class _BarberProfileState extends State<BarberProfile> {
           .collection('Users')
           .doc(widget.docid)
           .update({'imageUrl': _imageUrl});
+      await FirebaseFirestore.instance
+          .collection('Barbers')
+          .doc(widget.docid)
+          .update({'imageUrl': _imageUrl});
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile updated successfully')));
+          const SnackBar(content: Text('Profile updated successfully')));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update profile: $e')));
@@ -122,7 +96,7 @@ class _BarberProfileState extends State<BarberProfile> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Profile'),
+        title: const Text('Profile'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
       ),
@@ -139,7 +113,7 @@ class _BarberProfileState extends State<BarberProfile> {
                         ? FileImage(_image!)
                         : (_imageUrl != null
                                 ? NetworkImage(_imageUrl!)
-                                : AssetImage('assets/profile.jpg'))
+                                : const AssetImage('assets/icons/barber.png'))
                             as ImageProvider,
                   ),
                   Positioned(
@@ -149,7 +123,7 @@ class _BarberProfileState extends State<BarberProfile> {
                       backgroundColor: Colors.yellow,
                       radius: 20,
                       child: IconButton(
-                        icon: Icon(
+                        icon: const Icon(
                           Icons.camera_alt,
                           color: Colors.black,
                         ),
@@ -159,59 +133,47 @@ class _BarberProfileState extends State<BarberProfile> {
                   ),
                 ],
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               TextField(
                 controller: _usernameController,
                 readOnly: true,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Username',
                   prefixIcon: Icon(Icons.person),
                   border: OutlineInputBorder(),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               TextField(
                 controller: _nameController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Name',
                   prefixIcon: Icon(Icons.person),
                   border: OutlineInputBorder(),
                 ),
               ),
-
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               TextField(
                 controller: _telController,
                 keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Phone',
                   prefixIcon: Icon(Icons.phone),
                   border: OutlineInputBorder(),
                 ),
               ),
-              SizedBox(height: 20),
-              // TextField(
-              //   controller: _passwordController,
-              //   obscureText: !_isPasswordVisible,
-              //   decoration: InputDecoration(
-              //     labelText: 'Password',
-              //     prefixIcon: Icon(Icons.lock),
-              //     border: OutlineInputBorder(),
-              //     suffixIcon: IconButton(
-              //       icon: Icon(
-              //         _isPasswordVisible
-              //             ? Icons.visibility
-              //             : Icons.visibility_off,
-              //       ),
-              //       onPressed: () {
-              //         setState(() {
-              //           _isPasswordVisible = !_isPasswordVisible;
-              //         });
-              //       },
-              //     ),
-              //   ),
-              // ),
-              SizedBox(height: 30),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _featureController,
+                maxLines: 5, // Allows for a larger text box
+                decoration: const InputDecoration(
+                  labelText: 'คุณสมบัติ',
+                  hintText:
+                      'กรอกรายละเอียดเกี่ยวกับทักษะหรือคุณลักษณะของช่างตัดผม',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
                   try {
@@ -221,12 +183,20 @@ class _BarberProfileState extends State<BarberProfile> {
                         .update({
                       'name': _nameController.text,
                       'tel': _telController.text,
+                      'feature': _featureController.text,
+                    });
+                    await FirebaseFirestore.instance
+                        .collection('Barbers')
+                        .doc(widget.docid)
+                        .update({
+                      'feature': _featureController.text, // Save the feature
                     });
                     if (_image != null) {
                       await uploadImage();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Profile updated successfully')),
+                        const SnackBar(
+                            content: Text('Profile updated successfully')),
                       );
                     }
                   } catch (e) {
@@ -237,10 +207,11 @@ class _BarberProfileState extends State<BarberProfile> {
                 },
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.black,
-                  backgroundColor: Colors.yellow, // สีตัวหนังสือในปุ่ม
-                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  backgroundColor: Colors.yellow,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                 ),
-                child: Text('Edit Profile'),
+                child: const Text('Edit Profile'),
               ),
             ],
           ),

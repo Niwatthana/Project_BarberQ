@@ -20,9 +20,7 @@ class ChooseBarber extends StatelessWidget {
 
     var mytime = selectedTime.split("-");
     var mystarttimestr = mytime[0].toString().trim();
-    print(mystarttimestr);
     List<String> startimesplit = mystarttimestr.split(":");
-    print(startimesplit);
     DateTime now = DateTime.now();
 
     TimeOfDay _starttime = TimeOfDay(
@@ -34,30 +32,21 @@ class ChooseBarber extends StatelessWidget {
     // Query to get barbers who are booked for the selected time and have status "booked"
     QuerySnapshot bookingsSnapshot = await _firestore
         .collection('Bookings')
-        // .where('bookingDate', isEqualTo: DateTime.now())
         .where('startTime', isEqualTo: startTime)
         .where('status', isEqualTo: "booked")
         .where("barbershop_id", isEqualTo: barbershopid)
         .get();
 
-    // print("------");
-    // print(bookingsSnapshot.size);
-
     // Extract booked barber ids
     List<String> bookedBarberIds = bookingsSnapshot.docs
         .map<String>((doc) => doc['barber_id'])
-        // .map((doc) => doc['barbershop_id1'] as String)
         .toList();
-    // print(bookedBarberIds);
 
     // Query to get all barbers excluding those that are booked
     QuerySnapshot barbersSnapshot = await _firestore
         .collection('Barbers')
         .where("barbershop_id", isEqualTo: barbershopid)
         .get();
-
-    // print("*******");
-    // print(barbersSnapshot.size);
 
     // Filter out booked barbers
     List<Map<String, dynamic>> availableBarbers = barbersSnapshot.docs
@@ -68,106 +57,134 @@ class ChooseBarber extends StatelessWidget {
             })
         .toList();
 
-    // print("//////////");
-    // print(availableBarbers);
-    // print(availableBarbers.length);
-
     return availableBarbers;
   }
 
   @override
   Widget build(BuildContext context) {
+    final Color primaryColor = Color(0xFF1B4B4B); // สีหลัก (เขียวเข้ม)
+    final Color accentColor = Colors.redAccent; // สีรอง (แดง)
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Available Barbers'),
-      ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _getAvailableBarbers(selectedTime),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return const Center(child: Text('Error fetching barbers'));
-          }
-
-          final availableBarbers = snapshot.data ?? [];
-
-          if (availableBarbers.isEmpty) {
-            return const Center(
-                child: Text(
-                    'ไม่มีช่างที่ว่าง ในเวลาที่คุณเลือก โปรดเลือกเวลาใหม่'));
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Barbershop: $barbershopname',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+      // ข้อ 9: Gradient Background
+      backgroundColor: Colors.white, // ใช้สีพื้นหลังขาวก่อน แล้วปรับด้วย gradient
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [primaryColor, Colors.blueGrey.shade50],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ข้อ 10: Custom AppBar (ไม่ใช้ PopupMenuButton)
+              AppBar(
+                leading: IconButton(
+                  icon: Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  'Selected Time: $selectedTime',
-                  style: const TextStyle(fontSize: 16),
+                title: Text('เลือกช่าง', style: TextStyle(color: Colors.white, fontSize: 20)),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                flexibleSpace: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [primaryColor, Colors.teal],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: availableBarbers.length,
-                    itemBuilder: (context, index) {
-                      final barber = availableBarbers[index];
-                      final imageUrl = barber['imageUrl'] ??
-                          'https://via.placeholder.com/150'; // Placeholder image if no URL
-                      final feature =
-                          barber['feature'] ?? 'No features available';
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _getAvailableBarbers(selectedTime),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator(color: accentColor)); // ข้อ 2: Loading (ปรับสี)
+                      }
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: NetworkImage(imageUrl),
-                            radius: 30,
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error fetching barbers', style: TextStyle(color: Colors.black87))); // ข้อ 8: Error Handling (ปรับสี)
+                      }
+
+                      final availableBarbers = snapshot.data ?? [];
+
+                      if (availableBarbers.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'ไม่มีช่างที่ว่าง ในเวลาที่คุณเลือก โปรดเลือกเวลาใหม่',
+                            style: TextStyle(color: Colors.black87, fontSize: 16),
                           ),
-                          title: Text(barber['name'] ?? 'Unnamed Barber'),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Features: $feature'),
-                            ],
-                          ),
-                          trailing: ElevatedButton(
-                            onPressed: () {
-                              // Navigate to ChooseHairstyle and pass the barber ID
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ChooseHairstyle(
-                                    barbershopid: barbershopid,
-                                    selectedTime: selectedTime,
-                                    barbershopname: barbershopname,
-                                    barberid: barber['barber_id'],
-                                    barbername: barber['name'],
-                                    imgbarber: barber['imageUrl'],
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: availableBarbers.length,
+                        itemBuilder: (context, index) {
+                          final barber = availableBarbers[index];
+                          final imageUrl = barber['imageUrl'] ?? 'https://via.placeholder.com/150'; // Placeholder image if no URL
+                          final feature = barber['feature'] ?? 'No features available';
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 8.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                            ),
+                            elevation: 5,
+                            color: Colors.white, // ข้อ 3: Card Design (ปรับสีพื้นหลัง Card)
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: NetworkImage(imageUrl),
+                                radius: 30,
+                              ),
+                              title: Text(barber['name'] ?? 'Unnamed Barber',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)), // ข้อ 4: Typography (ปรับสี)
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Features: $feature',
+                                      style: TextStyle(fontSize: 14, color: Colors.grey[600])), // ข้อ 4: Typography (ปรับสี)
+                                ],
+                              ),
+                              trailing: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ChooseHairstyle(
+                                        barbershopid: barbershopid,
+                                        selectedTime: selectedTime,
+                                        barbershopname: barbershopname,
+                                        barberid: barber['barber_id'],
+                                        barbername: barber['name'],
+                                        imgbarber: barber['imageUrl'],
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor: accentColor, // ข้อ 1: Theme Color (ปรับสีปุ่ม)
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                              );
-                            },
-                            child: const Text('เลือก'),
-                          ),
-                        ),
+                                child: const Text('เลือก'),
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

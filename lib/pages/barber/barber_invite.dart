@@ -129,7 +129,7 @@ class _BarberInviteState extends State<BarberInvite> {
                   child: ListView.builder(
                     itemCount: shopList.length,
                     itemBuilder: (context, index) {
-                      var docid = shopList[index]!['docid'];
+                      // var docid = shopList[index]!['docid'];
                       var invite = shopList[index]!['invite'];
                       var barbershop = shopList[index]!['barbershop'];
                       bool isInvited = invite['inviteStatus'] == 'sent';

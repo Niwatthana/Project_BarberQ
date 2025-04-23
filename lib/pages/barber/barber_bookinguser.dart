@@ -59,6 +59,11 @@ class _BarberBookingUserState extends State<BarberBookingUser> {
               "user": userdata,
               "hair": haircutdata
             });
+            bookingUser.sort((a, b) {
+              var aDate = a["booking"]["startTime"].toDate();
+              var bDate = b["booking"]["startTime"].toDate();
+              return bDate.compareTo(aDate); // เรียงจากน้อยไปมาก
+            });
           });
         },
       ).toList();

@@ -12,7 +12,8 @@ Image logowidget(String ImageName) {
 
 TextField reusableTextField(String Text, IconData icon, bool isPasswordType,
     TextEditingController controller,
-    {required String? Function(dynamic value) validator}) {
+    {required String? Function(dynamic value) validator,
+    required TextInputType keyboardType}) {
   return TextField(
     controller: controller,
     obscureText: isPasswordType,
@@ -33,9 +34,7 @@ TextField reusableTextField(String Text, IconData icon, bool isPasswordType,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(30.0),
             borderSide: const BorderSide(width: 0, style: BorderStyle.none))),
-    keyboardType: isPasswordType
-        ? TextInputType.visiblePassword
-        : TextInputType.emailAddress,
+    keyboardType: isPasswordType ? TextInputType.visiblePassword : keyboardType,
   );
 }
 

@@ -1,6 +1,7 @@
 import 'package:barberapp/loginpage.dart';
 import 'package:barberapp/pages/barber/barber_bookinghistory.dart';
 import 'package:barberapp/pages/barber/barber_bookinguser.dart';
+import 'package:barberapp/pages/barber/barber_hairshop.dart';
 import 'package:barberapp/pages/barber/barber_invite.dart';
 import 'package:barberapp/pages/barber/barber_hair.dart';
 import 'package:barberapp/pages/barber/barber_summaryreport.dart';
@@ -230,6 +231,10 @@ class MenuGrid extends StatelessWidget {
             color: Colors.black,
             onPressed: () {
               // Handle the action for 'ประวัติการจอง'
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => BarberSummaryReport()));
             },
           ),
           MenuButton(
@@ -244,6 +249,21 @@ class MenuGrid extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => BarberInvite()),
+              );
+            },
+          ),
+          MenuButton(
+            icon: Image.asset(
+              'assets/icons/history.png',
+              width: 80,
+              height: 80,
+            ),
+            label: 'ทรงผมของร้าน',
+            color: Colors.black,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => BarberHairShop()),
               );
             },
           ),

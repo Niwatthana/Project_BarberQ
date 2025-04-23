@@ -158,20 +158,22 @@ class _LoginPageState extends State<LoginPage> {
                 logowidget("assets/images/logo1.png"),
                 SizedBox(height: 30),
                 reusableTextField(
-                  "Enter Username",
+                  "Username",
                   Icons.person_outline,
                   false,
                   _emailTextController,
+                  keyboardType: TextInputType.text,
                   validator: (value) {
                     return null;
                   },
                 ),
                 SizedBox(height: 20),
                 reusableTextField(
-                  "Enter Password",
+                  "Password",
                   Icons.lock_outline,
                   true,
                   _passwordTextController,
+                  keyboardType: TextInputType.number,
                   validator: (value) {
                     return null;
                   },

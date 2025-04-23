@@ -1,9 +1,15 @@
+import 'package:barberapp/loginpage.dart';
+import 'package:barberapp/pages/cutomer/bookingshop.dart';
+import 'package:barberapp/pages/cutomer/homecutomer.dart';
+import 'package:barberapp/pages/cutomer/profilecutomer.dart';
+import 'package:barberapp/pages/cutomer/seebookingshop.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:quickalert/models/quickalert_type.dart';
-import 'package:quickalert/widgets/quickalert_dialog.dart'; // สำหรับการจัดรูปแบบวันที่
+import 'package:quickalert/widgets/quickalert_dialog.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class BookingHistory extends StatefulWidget {
   const BookingHistory({super.key});
@@ -14,360 +20,570 @@ class BookingHistory extends StatefulWidget {
 
 class _BookingHistoryState extends State<BookingHistory> {
   List historyBooking = [];
-
-  // Future<List<DocumentSnapshot>> _fetchBookings() async {
-  //   try {
-  //     // Get the current user's ID
-  //     String userid = FirebaseAuth.instance.currentUser!.uid;
-
-  //     // Fetch the bookings for the specific user
-  //     var querySnapshot = await FirebaseFirestore.instance
-  //         .collection("Bookings")
-  //         .where("user_id", isEqualTo: userid) // Filter by userId
-  //         .get();
-
-  //     // print('>>>>>>$userid');
-
-  //     return querySnapshot.docs; // Return the list of booking documents
-  //   } catch (e) {
-  //     print('Error fetching bookings: $e');
-  //     return [];
-  //   }
-  // }
-
-  Future<void> _fetchData() async {
-    try {
-      String userid = FirebaseAuth.instance.currentUser!.uid;
-
-      // Fetch the bookings for the specific user
-      var bookingSnapshot = await FirebaseFirestore.instance
-          .collection("Bookings")
-          .where("user_id", isEqualTo: userid) // Filter by userId
-          .get();
-
-      // print(bookingSnapshot.size);
-      List<DocumentSnapshot> bookingDoc = bookingSnapshot.docs;
-
-      bookingDoc.map(
-        (doc) async {
-          // print(doc.id);
-          var bookingdata = doc.data() as Map<String, dynamic>;
-          // print(bookingdata['barberid']);
-
-          // BarberShop
-          // print("barbershop-----");
-          DocumentSnapshot<Map<String, dynamic>> barbershopSnapshot =
-              await bookingdata['barbershopid'].get();
-
-          var shopdata = barbershopSnapshot.data() as Map<String, dynamic>;
-          // print(shopdata['shop_name']);
-
-          // Barber
-          // print("barber");
-          DocumentSnapshot<Map<String, dynamic>> barberSnapshot =
-              await bookingdata['barberid'].get();
-          var barberdata = barberSnapshot.data() as Map<String, dynamic>;
-          // print(barberdata['imageUrl']);
-
-          // print(barberdata['barber_id1']);
-
-          // User
-          // print("user");
-          DocumentSnapshot<Map<String, dynamic>> userSnapshot =
-              await barberdata['barber_id1'].get();
-          var userdata = userSnapshot.data() as Map<String, dynamic>;
-          // print(userdata['name']);
-
-          setState(() {
-            historyBooking.add({
-              "booking": bookingdata,
-              "barbershop": shopdata,
-              "barber": barberdata,
-              "user": userdata,
-              "docId": doc.id
-            });
-          });
-        },
-      ).toList();
-
-      // ----------------
-    } catch (e) {
-      print('Error fetching bookings: $e');
-    }
-  }
+  bool isLoading = true;
+  bool hasError = false;
+  bool hasExistingBooking = false; // เพิ่มตัวแปรนี้
+  final Color primaryColor = Color(0xFF1B4B4B);
+  final Color accentColor = Colors.redAccent;
+  int _selectedIndex = 1; // เปลี่ยนเป็น 1 (ประวัติ) แทน 4 (Account)
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+    checkExistingBooking(); // เรียกฟังก์ชันตรวจสอบการจอง
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      String userid = FirebaseAuth.instance.currentUser!.uid;
+
+      var bookingSnapshot = await FirebaseFirestore.instance
+          .collection("Bookings")
+          .where("user_id", isEqualTo: userid)
+          .get();
+
+      List<DocumentSnapshot> bookingDoc = bookingSnapshot.docs;
+
+      List<Future> futures = bookingDoc.map((doc) async {
+        var bookingdata = doc.data() as Map<String, dynamic>;
+
+        DocumentSnapshot<Map<String, dynamic>> barbershopSnapshot =
+            await bookingdata['barbershopid'].get();
+        var shopdata = barbershopSnapshot.data() as Map<String, dynamic>;
+
+        DocumentSnapshot<Map<String, dynamic>> barberSnapshot =
+            await bookingdata['barberid'].get();
+        var barberdata = barberSnapshot.data() as Map<String, dynamic>;
+
+        DocumentSnapshot<Map<String, dynamic>> userSnapshot =
+            await barberdata['barber_id1'].get();
+        var userdata = userSnapshot.data() as Map<String, dynamic>;
+
+        setState(() {
+          historyBooking.add({
+            "booking": bookingdata,
+            "barbershop": shopdata,
+            "barber": barberdata,
+            "user": userdata,
+            "docId": doc.id
+          });
+          historyBooking.sort((a, b) {
+            var aDate = a["booking"]["startTime"].toDate();
+            var bDate = b["booking"]["startTime"].toDate();
+            return bDate.compareTo(aDate);
+          });
+        });
+      }).toList();
+
+      await Future.wait(futures);
+    } catch (e) {
+      setState(() {
+        hasError = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> checkExistingBooking() async {
+    try {
+      String userid = FirebaseAuth.instance.currentUser!.uid;
+      var bookingSnapshot = await FirebaseFirestore.instance
+          .collection('Bookings')
+          .where('user_id', isEqualTo: userid)
+          .where('status', isEqualTo: 'booked')
+          .get();
+
+      setState(() {
+        hasExistingBooking = bookingSnapshot.docs.isNotEmpty;
+      });
+    } catch (e) {
+      print('Error checking existing booking: $e');
+      setState(() {
+        hasExistingBooking = false;
+      });
+    }
+  }
+
+  void showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Text('ออกจากระบบ', style: TextStyle(color: accentColor)),
+          content: Text('คุณต้องการออกจากระบบหรือไม่?',
+              style: TextStyle(color: Colors.black)),
+          actions: <Widget>[
+            TextButton(
+              child: Text('ยกเลิก', style: TextStyle(color: Colors.grey)),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            TextButton(
+              child: Text('ตกลง', style: TextStyle(color: Colors.green)),
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                Navigator.of(context).pop();
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    switch (index) {
+      case 0: // หน้าหลักนะจ๊ะ
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => HomeCustomer()));
+        break;
+      case 1: // แน่นอนต่อๆกันไปอย่างง
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => BookingHistory()));
+        break;
+      case 2:
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => BookingShop()));
+        break;
+      case 3:
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => SeeBookingShop()));
+        break;
+      case 4:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                CutomerProfile(docid: FirebaseAuth.instance.currentUser!.uid),
+          ),
+        );
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ประวัติการจอง'),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [primaryColor, Colors.blueGrey.shade50],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              AppBar(
+                title: Text('ประวัติการจอง',
+                    style: TextStyle(color: Colors.white, fontSize: 20)),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                flexibleSpace: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [primaryColor, Colors.teal],
+                    ),
+                  ),
+                ),
+                actions: <Widget>[
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.account_circle),
+                    onSelected: (String result) {
+                      switch (result) {
+                        case 'history':
+                          // อยู่หน้า BookingHistory อยู่แล้ว ไม่ต้อง push ซ้ำ
+                          break;
+                        case 'logout':
+                          showLogoutDialog(context);
+                          break;
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
+                          value: 'history', child: Text('ประวัติของฉัน')),
+                      const PopupMenuItem<String>(
+                          value: 'logout', child: Text('ออกจากระบบ')),
+                    ],
+                  ),
+                ],
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: isLoading
+                      ? Center(
+                          child: CircularProgressIndicator(color: accentColor))
+                      : hasError
+                          ? Center(
+                              child: Text('ไม่สามารถโหลดข้อมูลได้',
+                                  style: TextStyle(color: Colors.black87)))
+                          : AnimationLimiter(
+                              child: ListView.builder(
+                                itemCount: historyBooking.length,
+                                itemBuilder: (context, index) {
+                                  Map<String, dynamic> booking =
+                                      historyBooking[index]["booking"];
+                                  Map<String, dynamic> barbershop =
+                                      historyBooking[index]["barbershop"];
+                                  Map<String, dynamic> barber =
+                                      historyBooking[index]["barber"];
+                                  Map<String, dynamic> user =
+                                      historyBooking[index]["user"];
+
+                                  var dateTime = booking['startTime'].toDate();
+                                  var yearInBuddhistEra = dateTime.year + 543;
+                                  var bookingDate = DateFormat.yMMMMd("th")
+                                      .format(dateTime)
+                                      .replaceAll((dateTime.year).toString(),
+                                          yearInBuddhistEra.toString());
+                                  var startTime = DateFormat.Hm()
+                                      .format(booking['startTime'].toDate());
+                                  var endTime = DateFormat.Hm()
+                                      .format(booking['endTime'].toDate());
+
+                                  var bookingStatus =
+                                      booking['status'] == "booked"
+                                          ? "จอง"
+                                          : booking['status'] == 'cancelled'
+                                              ? 'ยกเลิก'
+                                              : 'เสร็จสิ้น';
+
+                                  return AnimationConfiguration.staggeredList(
+                                    position: index,
+                                    duration: const Duration(milliseconds: 375),
+                                    child: SlideAnimation(
+                                      verticalOffset: 50.0,
+                                      child: FadeInAnimation(
+                                        child: Card(
+                                          margin: const EdgeInsets.all(10.0),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(15)),
+                                          elevation: 5,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    CircleAvatar(
+                                                      backgroundImage:
+                                                          NetworkImage(barber[
+                                                                  'imageUrl'] ??
+                                                              ''),
+                                                      radius: 30,
+                                                      onBackgroundImageError:
+                                                          (exception,
+                                                                  stackTrace) =>
+                                                              Icon(
+                                                                  Icons.person),
+                                                    ),
+                                                    const SizedBox(width: 16.0),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            user['name'] ??
+                                                                'ไม่พบชื่อช่างตัดผม',
+                                                            style: TextStyle(
+                                                              fontSize: 20,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color: Colors
+                                                                  .black87,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            barbershop[
+                                                                    'shop_name'] ??
+                                                                'ไม่พบชื่อร้าน',
+                                                            style: TextStyle(
+                                                              fontSize: 16,
+                                                              color: Colors
+                                                                  .grey[600],
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 15.0),
+                                                Text(
+                                                  'วันที่จอง: $bookingDate',
+                                                  style: TextStyle(
+                                                      fontSize: 16,
+                                                      color: Colors.black87),
+                                                ),
+                                                const SizedBox(height: 5.0),
+                                                Text(
+                                                  'เวลาที่จอง: $startTime - $endTime น.',
+                                                  style: TextStyle(
+                                                      fontSize: 16,
+                                                      color: Colors.black87),
+                                                ),
+                                                const SizedBox(height: 5.0),
+                                                Text(
+                                                  'สถานะ: $bookingStatus',
+                                                  style: TextStyle(
+                                                      fontSize: 16,
+                                                      color: Colors.black87),
+                                                ),
+                                                const SizedBox(height: 10.0),
+                                                (booking['status'] ==
+                                                            'cancelled' ||
+                                                        booking['status'] ==
+                                                            'done')
+                                                    ? SizedBox.shrink()
+                                                    : ElevatedButton(
+                                                        onPressed:
+                                                            booking['status'] ==
+                                                                    'cancelled'
+                                                                ? null
+                                                                : () async {
+                                                                    DateTime
+                                                                        now =
+                                                                        DateTime
+                                                                            .now();
+                                                                    DateTime
+                                                                        bookingStartTime =
+                                                                        booking['startTime']
+                                                                            .toDate();
+                                                                    Duration
+                                                                        timeDifference =
+                                                                        bookingStartTime
+                                                                            .difference(now);
+
+                                                                    if (timeDifference
+                                                                            .inMinutes <=
+                                                                        30) {
+                                                                      QuickAlert
+                                                                          .show(
+                                                                        context:
+                                                                            context,
+                                                                        type: QuickAlertType
+                                                                            .warning,
+                                                                        title:
+                                                                            'ไม่สามารถยกเลิกได้',
+                                                                        text:
+                                                                            'ใกล้ถึงคิวตัดผมของคุณแล้ว ไม่สามารถยกเลิกได้!!',
+                                                                        confirmBtnText:
+                                                                            'ตกลง',
+                                                                        confirmBtnColor:
+                                                                            Colors.red,
+                                                                      );
+                                                                    } else {
+                                                                      QuickAlert
+                                                                          .show(
+                                                                        context:
+                                                                            context,
+                                                                        type: QuickAlertType
+                                                                            .confirm,
+                                                                        title:
+                                                                            'ยืนยันการยกเลิก',
+                                                                        text:
+                                                                            'คุณจะยกเลิกการจองคิวใช่หรือไม่?',
+                                                                        confirmBtnText:
+                                                                            'ตกลง',
+                                                                        cancelBtnText:
+                                                                            'ยกเลิก',
+                                                                        confirmBtnColor:
+                                                                            Colors.red,
+                                                                        onConfirmBtnTap:
+                                                                            () async {
+                                                                          try {
+                                                                            await FirebaseFirestore.instance.collection('Bookings').doc(historyBooking[index]["docId"]).update({
+                                                                              'status': 'cancelled'
+                                                                            });
+                                                                            setState(() {
+                                                                              booking['status'] = 'cancelled';
+                                                                            });
+                                                                            Navigator.of(context).pop();
+                                                                          } catch (e) {
+                                                                            print('Error updating booking: $e');
+                                                                          }
+                                                                        },
+                                                                        onCancelBtnTap:
+                                                                            () =>
+                                                                                Navigator.of(context).pop(),
+                                                                      );
+                                                                    }
+                                                                  },
+                                                        style: ElevatedButton
+                                                            .styleFrom(
+                                                          backgroundColor:
+                                                              accentColor,
+                                                          shape: RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          10)),
+                                                        ),
+                                                        child: Text(
+                                                          booking['status'] ==
+                                                                  'cancelled'
+                                                              ? 'ยกเลิกแล้ว'
+                                                              : 'ยกเลิก',
+                                                          style: TextStyle(
+                                                              color:
+                                                                  Colors.white),
+                                                        ),
+                                                      ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: ListView.builder(
-        itemCount: historyBooking.length,
-        itemBuilder: (context, index) {
-          // print(historyBooking[index]);
-
-          Map<String, dynamic> booking = historyBooking[index]["booking"];
-          Map<String, dynamic> barbershop = historyBooking[index]["barbershop"];
-          Map<String, dynamic> barber = historyBooking[index]["barber"];
-          Map<String, dynamic> user = historyBooking[index]["user"];
-
-          // var bookingDate =
-          //     DateFormat.yMMMMd("th").format(booking['startTime'].toDate());
-          // print(bookingDate);
-
-          var bookingDate =
-              DateFormat.yMMMMd("th").format(booking['startTime'].toDate());
-          var dateTime = booking['startTime'].toDate();
-          var yearInBuddhistEra = dateTime.year + 543;
-
-          var formattedDate = bookingDate.replaceAll(
-              (dateTime.year).toString(), yearInBuddhistEra.toString());
-
-          var startTime = DateFormat.Hm().format(booking['startTime'].toDate());
-          var endTime = DateFormat.Hm().format(booking['endTime'].toDate());
-
-          var bookingStatus = booking['status'] == "booked"
-              ? "จอง"
-              : booking['status'] == 'cancelled'
-                  ? 'ยกเลิก'
-                  : 'เสร็จสิ้น';
-
-          return Card(
-            margin: const EdgeInsets.all(10.0),
-            child: Padding(
-              padding: const EdgeInsets.all(10.0),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [primaryColor, Colors.teal],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Barber name
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundImage: NetworkImage(barber['imageUrl']),
-                        radius: 30,
-                      ),
-                      const SizedBox(width: 16.0),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            user['name'] ?? 'ไม่พบชื่อช่างตัดผม',
-                            style: const TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            barbershop['shop_name'] ?? 'ไม่พบชื่อร้าน',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10.0),
-                  // Booking date
+                  Icon(Icons.person, size: 64, color: Colors.white),
+                  SizedBox(height: 10),
                   Text(
-                    'วันที่จอง: $formattedDate',
-                    style: const TextStyle(fontSize: 16),
+                    "Barber Shop",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      shadows: [Shadow(blurRadius: 5, color: Colors.black)],
+                    ),
                   ),
-                  const SizedBox(height: 5.0),
-
-                  // Time and selected time slot
-                  Text(
-                    'เวลาที่จอง: $startTime - $endTime น.',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 5.0),
-
-                  // Booking date
-                  Text(
-                    'สถานะ: $bookingStatus',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 5.0),
-
-                  ElevatedButton(
-                    onPressed: booking['status'] == 'cancelled'
-                        ? null // ปิดการใช้งานปุ่มถ้าการจองถูกยกเลิกแล้ว
-                        : () async {
-                            DateTime now = DateTime.now();
-                            DateTime bookingStartTime =
-                                booking['startTime'].toDate();
-                            Duration timeDifference =
-                                bookingStartTime.difference(now);
-
-                            // Check if the booking is within 30 minutes
-                            if (timeDifference.inMinutes <= 30) {
-                              QuickAlert.show(
-                                  context: context,
-                                  type: QuickAlertType.warning,
-                                  title: 'ไม่สามารถยกเลิกได้',
-                                  text:
-                                      'ใกล้ถึงคิวตัดผมของคุณแล้ว ไม่สามารถยกเลิกได้!!',
-                                  confirmBtnText: 'ตกลง');
-                            } else {
-                              // Show confirmation dialog with QuickAlert
-                              QuickAlert.show(
-                                context: context,
-                                type: QuickAlertType.confirm,
-                                title: 'ยืนยันการยกเลิก',
-                                text: 'คุณจะยกเลิกการจองคิวใช่หรือไม่?',
-                                confirmBtnText: 'ตกลง',
-                                cancelBtnText: 'ยกเลิก',
-                                onConfirmBtnTap: () async {
-                                  try {
-                                    // Cancel the booking
-                                    await FirebaseFirestore.instance
-                                        .collection('Bookings')
-                                        .doc(historyBooking[index][
-                                            "docId"]) // Reference correct booking
-                                        .update({'status': 'cancelled'});
-                                    print(
-                                        "Updating booking ID: ${historyBooking[index]["docId"]}");
-
-                                    setState(() {
-                                      booking['status'] =
-                                          'cancelled'; // Update booking status
-                                    });
-
-                                    Future.delayed(Duration(milliseconds: 1),
-                                        () {
-                                      Navigator.of(context)
-                                          .pop(); // Close QuickAlert
-                                    });
-                                  } catch (e) {
-                                    print('Error updating booking: $e');
-                                  }
-                                },
-                                onCancelBtnTap: () {
-                                  Navigator.of(context)
-                                      .pop(); // Close QuickAlert if cancelled
-                                },
-                              );
-                            }
-                          },
-                    child: Text(booking['status'] == 'cancelled'
-                        ? 'ยกเลิกแล้ว'
-                        : 'ยกเลิก'),
-                  )
                 ],
               ),
             ),
-          );
-        },
+            ListTile(
+              leading: Icon(Icons.home,
+                  color: _selectedIndex == 0 ? accentColor : Colors.black),
+              title: const Text('หน้าหลัก'),
+              selected: _selectedIndex == 0,
+              selectedTileColor: Colors.grey[300],
+              onTap: () {
+                setState(() => _selectedIndex = 0);
+                // อยู่หน้า HomeCustomer อยู่แล้ว ไม่ต้อง push ซ้ำ
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => HomeCustomer()));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.book_online,
+                  color: _selectedIndex == 2 ? accentColor : Colors.black),
+              title: const Text('การจอง'),
+              selected: _selectedIndex == 2,
+              selectedTileColor: Colors.grey[300],
+              onTap: () {
+                setState(() => _selectedIndex = 2);
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => BookingShop()));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.history,
+                  color: _selectedIndex == 1 ? accentColor : Colors.black),
+              title: const Text('ประวัติการจอง'),
+              selected: _selectedIndex == 1,
+              selectedTileColor: Colors.grey[300],
+              onTap: () {
+                setState(() => _selectedIndex = 1);
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => BookingHistory()));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.tab_outlined,
+                  color: _selectedIndex == 3 ? accentColor : Colors.black),
+              title: const Text('ดูตารางช่าง'),
+              selected: _selectedIndex == 3,
+              selectedTileColor: Colors.grey[300],
+              onTap: () {
+                setState(() => _selectedIndex = 3);
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => SeeBookingShop()));
+              },
+            ),
+          ],
+        ),
       ),
-      // body: FutureBuilder<List<DocumentSnapshot>>(
-      //   future: _fetchBookings(),
-      //   builder: (BuildContext context,
-      //       AsyncSnapshot<List<DocumentSnapshot>> snapshot) {
-      //     if (snapshot.hasError) {
-      //       return Center(
-      //           child: Text(
-      //               'Something went wrong: ${snapshot.error}')); // Print error
-      //     }
-
-      //     if (snapshot.connectionState == ConnectionState.waiting) {
-      //       return Center(child: CircularProgressIndicator());
-      //     }
-
-      //     if (!snapshot.hasData || snapshot.data!.isEmpty) {
-      //       return Center(child: Text('No bookings found'));
-      //     }
-
-      //     return ListView(
-      //       children: snapshot.data!.map((DocumentSnapshot document) {
-      //         Map<String, dynamic> data =
-      //             document.data()! as Map<String, dynamic>;
-
-      //         // Format the booking date
-      //         // String formattedDate = DateFormat('dd MMMM yyyy')
-      //         //     .format((data['bookingDate'] as Timestamp).toDate());
-
-      //         return Card(
-      //           margin: const EdgeInsets.all(10.0),
-      //           child: Padding(
-      //             padding: const EdgeInsets.all(10.0),
-      //             child: Column(
-      //               crossAxisAlignment: CrossAxisAlignment.start,
-      //               children: [
-      //                 // Barber name
-      //                 Row(
-      //                   children: [
-      //                     // CircleAvatar(
-      //                     //   backgroundImage: NetworkImage(data['imgbarber']),
-      //                     //   radius: 30,
-      //                     // ),
-      //                     const SizedBox(width: 16.0),
-      //                     Column(
-      //                       crossAxisAlignment: CrossAxisAlignment.start,
-      //                       children: [
-      //                         // Text(
-      //                         //   data['barbername'] ?? 'ไม่พบชื่อช่างตัดผม',
-      //                         //   style: const TextStyle(
-      //                         //       fontSize: 20, fontWeight: FontWeight.bold),
-      //                         // ),
-      //                         // Text(
-      //                         //   data['barbershopname'] ?? 'ไม่พบชื่อร้าน',
-      //                         //   style: const TextStyle(fontSize: 16),
-      //                         // ),
-      //                       ],
-      //                     ),
-      //                   ],
-      //                 ),
-      //                 const SizedBox(height: 10.0),
-
-      //                 // Haircut information
-      //                 // Text(
-      //                 //   'ทรงผม: ${data['haircut']}',
-      //                 //   style: const TextStyle(fontSize: 16),
-      //                 // ),
-      //                 const SizedBox(height: 5.0),
-
-      //                 // Group and selected time slot
-      //                 Text(
-      //                   'ประเภทลูกค้า: ${data['selectedGroup'] ?? 'ไม่ระบุ'}',
-      //                   style: const TextStyle(fontSize: 16),
-      //                 ),
-      //                 const SizedBox(height: 5.0),
-
-      //                 // Time and selected time slot
-      //                 // Text(
-      //                 //   'ช่วงเวลา: ${data['selectedTime'] ?? 'ไม่ระบุ'}',
-      //                 //   style: const TextStyle(fontSize: 16),
-      //                 // ),
-      //                 const SizedBox(height: 5.0),
-
-      //                 // Booking date
-      //                 // Text(
-      //                 //   'วันที่จอง: $formattedDate',
-      //                 //   style: const TextStyle(fontSize: 16),
-      //                 // ),
-      //                 const SizedBox(height: 5.0),
-
-      //                 // Price and time
-      //                 // Text(
-      //                 //   'ราคา: ${data['price']} บาท',
-      //                 //   style: const TextStyle(fontSize: 16),
-      //                 // ),
-      //                 // const SizedBox(height: 5.0),
-      //                 // Text(
-      //                 //   'ระยะเวลา: ${data['time']} นาที',
-      //                 //   style: const TextStyle(fontSize: 16),
-      //                 // ),
-      //               ],
-      //             ),
-      //           ),
-      //         );
-      //       }).toList(),
-      //     );
-      //   },
-      // ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'หน้าหลัก',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: 'ประวัติ',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book_online),
+            label: 'การจอง',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.tab_outlined),
+            label: 'ตารางช่าง',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_circle),
+            label: 'Account',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.black, // ไอคอนที่เลือก (เช่น ประวัติ)
+        unselectedItemColor: Colors.grey, // ไอคอนที่ไม่เลือก
+        backgroundColor: Colors.white,
+        elevation: 20,
+        selectedLabelStyle: TextStyle(color: Colors.black),
+        unselectedLabelStyle: TextStyle(color: Colors.grey),
+        type: BottomNavigationBarType.fixed,
+        onTap: _onItemTapped,
+      ),
     );
   }
 }

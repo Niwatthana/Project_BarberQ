@@ -54,6 +54,8 @@ dependencies:
   firebase_messaging: ^14.0.0
   flutter_local_notifications: ^17.2.3
   syncfusion_flutter_charts: ^27.1.51
+  cached_network_image: ^3.4.0
+  flutter_staggered_animations: ^1.1.1
 
 
 

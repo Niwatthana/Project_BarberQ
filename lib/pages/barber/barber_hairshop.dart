@@ -1,111 +1,86 @@
 import 'package:barberapp/loginpage.dart';
-import 'package:barberapp/pages/owner/owner_addhair.dart';
-import 'package:barberapp/pages/owner/owner_edithair.dart';
-import 'package:barberapp/pages/owner/owner_epy.dart';
-import 'package:barberapp/pages/owner/ownerpage.dart';
-import 'package:barberapp/pages/owner/ownershop.dart';
+import 'package:barberapp/pages/barber/barber_bookinghistory.dart';
+import 'package:barberapp/pages/barber/barber_hair.dart';
+import 'package:barberapp/pages/barber/barber_summaryreport.dart';
+import 'package:barberapp/pages/barber/barberpage.dart';
 import 'package:barberapp/pages/owner/profileowner.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:quickalert/models/quickalert_type.dart';
-import 'package:quickalert/widgets/quickalert_dialog.dart';
 
-class Ownerhair extends StatefulWidget {
-  const Ownerhair({Key? key}) : super(key: key);
+class BarberHairShop extends StatefulWidget {
+  const BarberHairShop({Key? key}) : super(key: key);
 
   @override
-  State<Ownerhair> createState() => _OwnerhairState();
+  State<BarberHairShop> createState() => _BarberHairShopState();
 }
 
-class _OwnerhairState extends State<Ownerhair> {
+class _BarberHairShopState extends State<BarberHairShop> {
   int _selectedIndex = 0;
+  String owner_id = "";
 
   StreamBuilder showhaircut() {
     return StreamBuilder<QuerySnapshot>(
-      // stream: FirebaseFirestore.instance.collection("Haircuts").where("ownerid").snapshots(),
       stream: FirebaseFirestore.instance
           .collection("Haircuts")
-          .where("owner_id", isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+          .where("owner_id", isEqualTo: owner_id)
           .snapshots(),
-
       builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
         if (snapshot.hasError) {
-          return Text('Something went wrong');
+          return Center(child: Text('เกิดข้อผิดพลาดบางอย่าง'));
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Text("Loading");
+          return Center(child: CircularProgressIndicator());
         }
 
-        return Column(
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(child: Text('ไม่มีข้อมูลทรงผม'));
+        }
+        // print("----------------------");
+
+        // print(snapshot.data);
+
+        return ListView(
+          shrinkWrap: true,
           children: snapshot.data!.docs.map((DocumentSnapshot document) {
             Map<String, dynamic> data =
                 document.data()! as Map<String, dynamic>;
-            print(document.id);
-
-            return Card(
-              child: ListTile(
-                leading: Image.network(data['shop_img'],
-                    width: 50, height: 50, fit: BoxFit.cover),
-                title: Text(data['haircut_name']),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('ราคา: ${data['price']}'),
-                    Text('เวลาตัด: ${data['time']}'),
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.edit,
-                        color: Colors.blue,
-                      ),
-                      onPressed: () {
-                        // edit by document.id
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    EditHairStyle(hairid: document.id)));
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.delete,
-                        color: Colors.red,
-                      ),
-                      onPressed: () {
-                        QuickAlert.show(
-                          onCancelBtnTap: () {
-                            Navigator.pop(context);
-                          },
-                          onConfirmBtnTap: () {
-                            print("Delete");
-                            deleteHaircut(document.id);
-                            Navigator.pop(context);
-                          },
-                          context: context,
-                          type: QuickAlertType.error,
-                          title: 'ลบข้อมูล!',
-                          text: 'ต้องการลบข้อมูล',
-                          confirmBtnText: 'ตกลง',
-                          cancelBtnText: 'ยกเลิก',
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
+            return HaircutCard(
+              imageUrl: data['shop_img'],
+              haircutName: data['haircut_name'],
+              price: data['price'].toString(),
+              time: data['time'].toString(),
             );
           }).toList(),
         );
       },
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getAffiliationBarber();
+  }
+
+  Future<void> getAffiliationBarber() async {
+    try {
+      var barberSnapshot = await FirebaseFirestore.instance
+          .collection('Barbers')
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .get();
+
+      var data = barberSnapshot.data(); //วิธีการเรียกใช้ ref
+
+      // print(data!['barbershop_id']);
+
+      setState(() {
+        owner_id = data!['barbershop_id'] ?? "";
+      });
+    } catch (e) {
+      print('Error fetching barbers: $e');
+    }
   }
 
   @override
@@ -161,24 +136,11 @@ class _OwnerhairState extends State<Ownerhair> {
             ),
             child: Column(
               children: [
-                // HaircutCard(
-                //   imageUrl: 'assets/icons/barber_shop.png',
-                //   haircutName: 'ทรงผม รองทรง',
-                //   price: '50',
-                //   time: '30',
-                // ),
-                showhaircut()
+                showhaircut(),
               ],
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-              context, MaterialPageRoute(builder: (context) => AddHairStyle()));
-        },
-        child: const Icon(Icons.add),
       ),
       drawer: Drawer(
         child: ListView(
@@ -199,11 +161,11 @@ class _OwnerhairState extends State<Ownerhair> {
                 });
 
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => OwnerPage()));
+                    MaterialPageRoute(builder: (context) => BarberPage()));
               },
             ),
             ListTile(
-              title: const Text('ร้านตัดผมของฉัน'),
+              title: const Text('รายละเอียดทรงผม'),
               selected: _selectedIndex == 1,
               onTap: () {
                 setState(() {
@@ -211,49 +173,33 @@ class _OwnerhairState extends State<Ownerhair> {
                 });
 
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => Ownershop()));
+                    MaterialPageRoute(builder: (context) => BarberHair()));
               },
             ),
             ListTile(
-              title: const Text('ช่างตัดผม'),
+              title: const Text('ข้อมูลการจองคิว'),
               selected: _selectedIndex == 2,
               onTap: () {
                 setState(() {
                   _selectedIndex = 2;
                 });
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => OwnerEmployee()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => BarberBookingHistoryPage()));
               },
             ),
             ListTile(
-              title: const Text('ทรงผม'),
+              title: const Text('รายงานสรุป'),
               selected: _selectedIndex == 3,
               onTap: () {
                 setState(() {
                   _selectedIndex = 3;
                 });
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => Ownerhair()));
-              },
-            ),
-            ListTile(
-              title: const Text('การจองของลูกค้า'),
-              selected: _selectedIndex == 4,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 4;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: const Text('รายงานสรุป'),
-              selected: _selectedIndex == 5,
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 5;
-                });
-                Navigator.pop(context);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => BarberSummaryReport()));
               },
             ),
           ],
@@ -298,34 +244,6 @@ class _OwnerhairState extends State<Ownerhair> {
       },
     );
   }
-
-  void _addhair(String haircut_name, String price) {
-    FirebaseFirestore.instance.collection('Haircuts').add({
-      'haircut_name': haircut_name,
-      'price': price,
-      // เพิ่มฟิลด์อื่น ๆ ตามต้องการ
-    }).then((value) {
-      if (mounted) {}
-    }).catchError((error) {
-      print("เกิดข้อผิดพลาดในการเพิ่มช่างตัดผม: $error");
-    });
-  }
-
-  Future<void> deleteHaircut(String docid) async {
-    FirebaseFirestore.instance
-        .collection("Haircuts")
-        .doc(docid)
-        .delete()
-        .then((value) {
-      if (mounted) {}
-    }).catchError((error) {
-      print("เกิดข้อผิดพลาดในการลบช่างตัดผม: $error");
-    });
-    await FirebaseStorage.instance
-        .ref()
-        .child("barbershop/${docid}.jpg")
-        .delete();
-  }
 }
 
 class HaircutCard extends StatelessWidget {
@@ -349,7 +267,7 @@ class HaircutCard extends StatelessWidget {
         padding: EdgeInsets.all(8),
         child: Row(
           children: [
-            Image.asset(
+            Image.network(
               imageUrl,
               width: 80,
               height: 80,
@@ -367,6 +285,7 @@ class HaircutCard extends StatelessWidget {
                 Text('เวลาในการตัด $time นาที'),
               ],
             ),
+            Spacer(),
           ],
         ),
       ),

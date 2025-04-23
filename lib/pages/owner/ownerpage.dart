@@ -1,3 +1,4 @@
+import 'package:barberapp/pages/owner/owner_bookings.dart';
 import 'package:barberapp/pages/owner/owner_bookinguser.dart';
 import 'package:barberapp/pages/owner/owner_hair.dart';
 import 'package:barberapp/pages/owner/owner_invite.dart';
@@ -138,7 +139,21 @@ class _OwnerPageState extends State<OwnerPage> {
                 setState(() {
                   _selectedIndex = 4;
                 });
-                Navigator.pop(context);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => OwnerBookingUser()));
+              },
+            ),
+            ListTile(
+              title: const Text('การจองทั้งหมดของร้าน'),
+              selected: _selectedIndex == 5,
+              onTap: () {
+                setState(() {
+                  _selectedIndex = 5;
+                });
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => OwnerBookings()));
               },
             ),
             ListTile(
@@ -148,7 +163,7 @@ class _OwnerPageState extends State<OwnerPage> {
                 setState(() {
                   _selectedIndex = 5;
                 });
-                Navigator.pop(
+                Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (context) => SummaryReproState()));
@@ -233,6 +248,19 @@ class MenuGrid extends StatelessWidget {
               // Handle the action for 'การจองของลูกค้า'
               Navigator.push(context,
                   MaterialPageRoute(builder: (context) => OwnerBookingUser()));
+            },
+          ),
+          MenuButton(
+            icon: Image.asset(
+              'assets/icons/history.png',
+              width: 80,
+              height: 80,
+            ),
+            label: 'การจองทั้งหมดในร้าน',
+            color: Colors.black,
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => OwnerBookings()));
             },
           ),
           MenuButton(

@@ -132,12 +132,112 @@ class _SummaryReproStateState extends State<SummaryReproState> {
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : Column(
+              //       children: [
+              //         Text("$bookedCount"),
+              //         Text("$cancelledCount"),
+              //         Text("$doneCount"),
+              //         Text("$isLoading"),
+              //           body: isLoading
+              // ? Center(child: CircularProgressIndicator())
+              // : Column(
               children: [
-                // Text("$bookedCount"),
-                // Text("$cancelledCount"),
-                // Text("$doneCount"),
-                // Text("$isLoading"),
-                // const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // การ์ดสำหรับการจอง
+                    Card(
+                      elevation: 5,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "จอง",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "$bookedCount",
+                              style: TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 24),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "ครั้ง",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // การ์ดสำหรับการยกเลิก
+
+                    // การ์ดสำหรับการสำเร็จ
+                    Card(
+                      elevation: 5,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "สำเร็จ",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "$doneCount",
+                              style: TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 24),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "ครั้ง",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Card(
+                      elevation: 5,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "ยกเลิก",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "$cancelledCount",
+                              style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 24),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "ครั้ง",
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 Container(
                   child: SfCartesianChart(
                     primaryXAxis: CategoryAxis(),

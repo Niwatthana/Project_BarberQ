@@ -1,36 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class BarberBookingHistoryPage extends StatefulWidget {
-  const BarberBookingHistoryPage({super.key});
+class OwnerBookings extends StatefulWidget {
+  const OwnerBookings({super.key});
 
   @override
-  State<BarberBookingHistoryPage> createState() =>
-      _BarberBookingHistoryPageState();
+  State<OwnerBookings> createState() => _OwnerBookingsState();
 }
 
-class _BarberBookingHistoryPageState extends State<BarberBookingHistoryPage> {
+class _OwnerBookingsState extends State<OwnerBookings> {
   List bookingUser = [];
-
-  // State variables for dropdown selections
-  String? selectedMonth;
-  String? selectedYear;
-
-  // Lists for dropdowns
-  List<String> months = List.generate(12, (index) => (index + 1).toString());
-  List<String> years =
-      List.generate(10, (index) => (DateTime.now().year - index).toString());
 
   Future<void> _fetchData() async {
     try {
-      String barberid = FirebaseAuth.instance.currentUser!.uid;
+      // String barberid = FirebaseAuth.instance.currentUser!.uid;
 
       // Fetch the bookings for the specific user
       var bookingSnapshot = await FirebaseFirestore.instance
-          .collection("Bookings")
-          .where("barber_id", isEqualTo: barberid) // Filter by userId
+          .collection("Bookings") // Filter by userId
+          .where("barbershop_id",
+              isEqualTo: FirebaseAuth.instance.currentUser!.uid)
           .orderBy("startTime", descending: true)
           .get();
 
@@ -43,6 +35,7 @@ class _BarberBookingHistoryPageState extends State<BarberBookingHistoryPage> {
 
       bookings.map(
         (doc) async {
+          // print(doc.id);
           var bookingdata = doc.data() as Map<String, dynamic>;
           // User
           DocumentSnapshot<Map<String, dynamic>> userSnapshot =
@@ -53,22 +46,32 @@ class _BarberBookingHistoryPageState extends State<BarberBookingHistoryPage> {
           DocumentSnapshot<Map<String, dynamic>> haircutSnapshot =
               await bookingdata['haircutid'].get();
           var haircutdata = haircutSnapshot.data() as Map<String, dynamic>;
+          //barber
+          DocumentSnapshot<Map<String, dynamic>> barberSnapshot =
+              await bookingdata['barberid'].get();
+          var barberdata = barberSnapshot.data() as Map<String, dynamic>;
+
+          // print(barberdata);
+          // print(haircutdata);
 
           setState(() {
             bookingUser.add({
               "bookingId": doc.id,
               "booking": bookingdata,
               "user": userdata,
-              "hair": haircutdata
+              "hair": haircutdata,
+              "barber": barberdata
             });
             bookingUser.sort((a, b) {
               var aDate = a["booking"]["startTime"].toDate();
               var bDate = b["booking"]["startTime"].toDate();
-              return bDate.compareTo(aDate); // เรียงจากน้อยไปมาก
+              return bDate.compareTo(aDate);
             });
           });
         },
       ).toList();
+
+      // ----------------
     } catch (e) {
       print('Error fetching bookings: $e');
     }
@@ -84,23 +87,25 @@ class _BarberBookingHistoryPageState extends State<BarberBookingHistoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("ประวัติการจองทั้งหมด"),
+        title: const Text("ประวัติการจองทั้งหมดในร้าน"),
       ),
       body: bookingUser.isEmpty
           ? Center(child: Text("ยังไม่มีข้อมูลประวัติการจอง"))
           : ListView.builder(
               itemCount: bookingUser.length,
               itemBuilder: (context, index) {
+                // print(bookingUser);
+
                 Map<String, dynamic> bookings = bookingUser[index]["booking"];
                 Map<String, dynamic> user = bookingUser[index]["user"];
                 Map<String, dynamic> hair = bookingUser[index]["hair"];
+                Map<String, dynamic> barber = bookingUser[index]["barber"];
 
-                // ใช้ DateFormat "d MMMM y" เพื่อเรียงวัน/เดือน/ปี
+                var bookingDate = DateFormat.yMMMMd("th")
+                    .format(bookings['startTime'].toDate());
                 var dateTime = bookings['startTime'].toDate();
-                var bookingDate = DateFormat("d MMMM y", "th").format(dateTime);
-
-                // แปลงปีเป็นพุทธศักราช
                 var yearInBuddhistEra = dateTime.year + 543;
+
                 var formattedDate = bookingDate.replaceAll(
                     (dateTime.year).toString(), yearInBuddhistEra.toString());
 
@@ -113,10 +118,11 @@ class _BarberBookingHistoryPageState extends State<BarberBookingHistoryPage> {
                   margin:
                       const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
                   child: ListTile(
-                    title: Text('ชื่อคนจอง: ${user['name']}'),
+                    title: Text('ช่างตัดผม: ${barber['name']}'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text('ชื่อคนจอง: ${user['name']}'),
                         Text('เบอร์โทรศัพท์: ${user['tel']}'),
                         Text('วันที่จอง: $formattedDate'),
                         Text('เวลาที่จอง: $startTime - $endTime น.'),

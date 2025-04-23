@@ -130,6 +130,7 @@ class _SignupPageState extends State<SignupPage> {
                   Icons.person_outline,
                   false,
                   _nameTextController,
+                  keyboardType: TextInputType.text,
                   validator: (value) {
                     return;
                   },
@@ -140,6 +141,7 @@ class _SignupPageState extends State<SignupPage> {
                   Icons.phone_outlined,
                   false,
                   _telTextController,
+                  keyboardType: TextInputType.number,
                   validator: (value) {
                     return;
                   },
@@ -150,6 +152,7 @@ class _SignupPageState extends State<SignupPage> {
                   Icons.person_outline,
                   false,
                   _usernameTextController,
+                  keyboardType: TextInputType.text,
                   validator: (value) {
                     return;
                   },
@@ -160,6 +163,7 @@ class _SignupPageState extends State<SignupPage> {
                   Icons.lock_outline,
                   true,
                   _passwordTextController,
+                  keyboardType: TextInputType.text,
                   validator: (value) {
                     return;
                   },

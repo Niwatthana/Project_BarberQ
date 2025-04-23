@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:quickalert/models/quickalert_type.dart';
 import 'package:quickalert/widgets/quickalert_dialog.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class BookingResults extends StatefulWidget {
   const BookingResults({
@@ -42,19 +43,31 @@ class _BookingResultsState extends State<BookingResults> {
   bool isBookingInProgress = false; // ตัวแปรสำหรับเช็คสถานะการจอง
   List<String> timeSlots = []; // เก็บช่วงเวลา 30 นาที
   String? customerName; // ตัวแปรสำหรับเก็บชื่อลูกค้า
+  bool isLoading = true; // ข้อ 2: Loading State
+
+  final Color primaryColor = Color(0xFF1B4B4B); // สีหลัก (เขียวเข้ม)
+  final Color accentColor = Colors.redAccent; // สีรอง (แดง)
 
   @override
   void initState() {
     super.initState();
-    _loadCustomerName(); // เรียกฟังก์ชันดึงข้อมูลชื่อเมื่อตอนเริ่มต้น
+    _loadCustomerName().then((_) => setState(
+        () => isLoading = false)); // เรียกฟังก์ชันดึงข้อมูลชื่อเมื่อตอนเริ่มต้น
     print(widget.selectedGroup);
   }
 
   Future<void> _loadCustomerName() async {
-    String name = await _getCustomerName(); // ดึงชื่อจาก Firebase
-    setState(() {
-      customerName = name; // อัปเดตตัวแปร state เมื่อได้ชื่อ
-    });
+    try {
+      String name = await _getCustomerName(); // ดึงชื่อจาก Firebase
+      setState(() {
+        customerName = name; // อัปเดตตัวแปร state เมื่อได้ชื่อ
+      });
+    } catch (e) {
+      // ข้อ 8: Error Handling
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+      );
+    }
   }
 
   Future<String> _getCustomerName() async {
@@ -63,45 +76,94 @@ class _BookingResultsState extends State<BookingResults> {
         await FirebaseFirestore.instance.collection('Users').doc(uid).get();
 
     if (userSnapshot.exists) {
-      return userSnapshot['name']; // สมมติว่าชื่อผู้ใช้เก็บในฟิลด์ 'name'
+      return userSnapshot['name'] ?? 'Unknown'; // กรณีที่ไม่มีข้อมูลชื่อผู้ใช้
     } else {
-      return 'Unknown'; // กรณีที่ไม่มีข้อมูลชื่อผู้ใช้
+      return 'Unknown';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'รายละเอียดการจอง',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+      // ข้อ 9: Gradient Background
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [primaryColor, Colors.blueGrey.shade50],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
         ),
-      ),
-      body: Center(
-        child: Container(
-          padding: const EdgeInsets.all(16.0),
-          margin: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(20.0),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildBarberInfo(),
-              const SizedBox(height: 20.0),
-              _buildBookingDate(),
-              const SizedBox(height: 20.0),
-              _buildBookingResultss(),
-              const SizedBox(height: 20.0),
-              _buildActionButtons(),
-            ],
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: isLoading
+                  ? Center(
+                      child: CircularProgressIndicator(
+                          color: accentColor)) // ข้อ 2: Loading
+                  : AnimationLimiter(
+                      // ข้อ 11: Animation
+                      child: Container(
+                        margin: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white, // ข้อ 3: Card Design
+                          borderRadius: BorderRadius.circular(20.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.3),
+                              spreadRadius: 5,
+                              blurRadius: 7,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // ข้อ 10: Custom AppBar (ไม่ใช้ PopupMenuButton)
+                              AppBar(
+                                leading: IconButton(
+                                  icon: Icon(Icons.arrow_back,
+                                      color: Colors.black),
+                                  onPressed: () => Navigator.of(context).pop(),
+                                ),
+                                elevation: 0,
+                                centerTitle: true,
+                                title: Text(
+                                  'รายละเอียดการจอง',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                backgroundColor: Colors.transparent,
+                                flexibleSpace: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [primaryColor, Colors.teal],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20.0),
+                              _buildBarberInfo(),
+                              const SizedBox(height: 20.0),
+                              _buildBookingDate(),
+                              const SizedBox(height: 20.0),
+                              _buildBookingResultss(),
+                              const SizedBox(height: 20.0),
+                              _buildActionButtons(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
           ),
         ),
       ),
@@ -110,27 +172,46 @@ class _BookingResultsState extends State<BookingResults> {
 
   // Widget for displaying barber info (profile picture, name, haircut)
   Widget _buildBarberInfo() {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 40,
-          backgroundImage: NetworkImage(widget.imgbarber),
-        ),
-        const SizedBox(width: 16.0),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.barbername,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+    return AnimationConfiguration.staggeredList(
+      position: 0,
+      duration: const Duration(milliseconds: 375),
+      child: SlideAnimation(
+        verticalOffset: 50.0,
+        child: FadeInAnimation(
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 40,
+                backgroundImage: NetworkImage(widget.imgbarber),
+                onBackgroundImageError: (exception, stackTrace) => Icon(
+                    Icons.person,
+                    color: Colors.grey[600]), // ข้อ 5: Handle image error
               ),
-            ),
-            Text(widget.haircut),
-          ],
+              const SizedBox(width: 16.0),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.barbername,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87, // ข้อ 4: Typography
+                    ),
+                  ),
+                  Text(
+                    widget.haircut,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600], // ข้อ 4: Typography
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 
@@ -138,12 +219,21 @@ class _BookingResultsState extends State<BookingResults> {
   Widget _buildBookingDate() {
     final String formattedDate =
         DateFormat('dd MMMM yyyy').format(DateTime.now());
-    return Text(
-      formattedDate,
-      style: const TextStyle(
-        fontSize: 25,
-        fontWeight: FontWeight.bold,
-        color: Colors.black87,
+    return AnimationConfiguration.staggeredList(
+      position: 1,
+      duration: const Duration(milliseconds: 375),
+      child: SlideAnimation(
+        verticalOffset: 50.0,
+        child: FadeInAnimation(
+          child: Text(
+            formattedDate,
+            style: TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87, // ข้อ 4: Typography
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -152,73 +242,103 @@ class _BookingResultsState extends State<BookingResults> {
   Widget _buildBookingResultss() {
     String group = widget.selectedGroup ?? '';
 
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(20.0),
-      ),
-      child: Column(
-        children: [
-          Text(
-            'รายละเอียดการจอง',
-            style: const TextStyle(
-              fontSize: 25,
-              fontWeight: FontWeight.bold,
+    return AnimationConfiguration.staggeredList(
+      position: 2,
+      duration: const Duration(milliseconds: 375),
+      child: SlideAnimation(
+        verticalOffset: 50.0,
+        child: FadeInAnimation(
+          child: Container(
+            padding: const EdgeInsets.all(20.0),
+            decoration: BoxDecoration(
+              color: Colors.white, // ข้อ 3: Card Design
+              borderRadius: BorderRadius.circular(20.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 5,
+                  blurRadius: 7,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'รายละเอียดการจอง',
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87, // ข้อ 4: Typography
+                  ),
+                ),
+                const SizedBox(height: 10.0),
+                Text('ทรงผม: ${widget.haircut}',
+                    style: TextStyle(fontSize: 20, color: Colors.black87)),
+                Text('ประเภทลูกค้า: $group',
+                    style: TextStyle(fontSize: 20, color: Colors.black87)),
+                Text('ราคา: ${widget.price} บาท',
+                    style: TextStyle(fontSize: 20, color: Colors.black87)),
+                Text('เวลาที่จอง: ${widget.selectedTime}',
+                    style: TextStyle(fontSize: 20, color: Colors.black87)),
+                Text('เวลาที่ตัด: ${widget.time} นาที',
+                    style: TextStyle(fontSize: 20, color: Colors.black87)),
+              ],
             ),
           ),
-          const SizedBox(height: 10.0),
-          Text('ทรงผม: ${widget.haircut}',
-              style: const TextStyle(fontSize: 20)),
-          Text('ประเภทลูกค้า: $group', style: const TextStyle(fontSize: 20)),
-          Text('ราคา: ${widget.price} บาท',
-              style: const TextStyle(fontSize: 20)),
-          Text('เวลาที่จอง: ${widget.selectedTime} ',
-              style: const TextStyle(fontSize: 20)),
-          Text('เวลาที่ตัด: ${widget.time} นาที',
-              style: const TextStyle(fontSize: 20)),
-        ],
+        ),
       ),
     );
   }
 
   // Widget for displaying the action buttons (Book and Back)
   Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton(
-          onPressed: isBookingInProgress ? null : _handleBooking,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            padding: EdgeInsets.symmetric(
-              horizontal: 40.0,
-              vertical: 15.0,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+    return AnimationConfiguration.staggeredList(
+      position: 3,
+      duration: const Duration(milliseconds: 375),
+      child: SlideAnimation(
+        verticalOffset: 50.0,
+        child: FadeInAnimation(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: isBookingInProgress ? null : _handleBooking,
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor:
+                      Colors.green, // ปรับเป็นสีเขียว (ยังคงไว้ตามต้นฉบับ)
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 40.0, vertical: 15.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text('จอง',
+                    style: TextStyle(color: Colors.white)), // ข้อ 4: Typography
+              ),
+              const SizedBox(width: 20.0),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context); // กลับไปหน้าก่อนหน้า
+                },
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor:
+                      accentColor, // ข้อ 1: Theme Color (ปรับสีปุ่มเป็น accentColor)
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 35.0, vertical: 15.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('ย้อนกลับ',
+                    style: TextStyle(color: Colors.white)), // ข้อ 4: Typography
+              ),
+            ],
           ),
-          child: Text('จอง', style: TextStyle(color: Colors.black)),
         ),
-        const SizedBox(width: 20.0),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context); // กลับไปหน้าก่อนหน้า
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 35.0,
-              vertical: 15.0,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          child: const Text('ย้อนกลับ', style: TextStyle(color: Colors.black)),
-        ),
-      ],
+      ),
     );
   }
 
@@ -239,6 +359,7 @@ class _BookingResultsState extends State<BookingResults> {
           type: QuickAlertType.warning,
           text:
               'คุณมีการจองแล้วไม่สามารถจองซ้ำได้ กรุณายกเลิกการจองล่าสุดเพื่อดำเนินการจองใหม่!',
+          confirmBtnColor: accentColor, // ปปรับสีปุ่มใน QuickAlert
           onConfirmBtnTap: () {
             Navigator.pushReplacement(
               context,
@@ -253,7 +374,6 @@ class _BookingResultsState extends State<BookingResults> {
         await _createNewBooking();
       }
     } catch (error) {
-      // แสดง error เพื่อดีบัก
       print('Error during booking: $error');
       setState(() {
         isBookingInProgress =
@@ -266,6 +386,7 @@ class _BookingResultsState extends State<BookingResults> {
         confirmBtnText: 'ตกลง',
         type: QuickAlertType.error,
         text: 'ไม่สามารถทำการจองได้ กรุณาลองใหม่อีกครั้ง',
+        confirmBtnColor: accentColor, // ปปรับสีปุ่มใน QuickAlert
       );
     }
   }
@@ -289,17 +410,9 @@ class _BookingResultsState extends State<BookingResults> {
 
   Future<void> _createNewBooking() async {
     try {
-      // var uid = FirebaseAuth.instance.currentUser!.uid;
-      // String customerName = await _getCustomerName(); // ดึงข้อมูลชื่อลูกค้า
-      // DateTime startTime = DateTime.parse(widget.selectedTime);
-      // DateTime endTime =
-      //     startTime.add(Duration(minutes: int.parse(widget.time)));
-
       var mytime = widget.selectedTime.split("-");
       var mystarttimestr = mytime[0].toString().trim();
-      print(mystarttimestr);
       List<String> startimesplit = mystarttimestr.split(":");
-      print(startimesplit);
       DateTime now = DateTime.now();
 
       TimeOfDay _starttime = TimeOfDay(
@@ -341,20 +454,14 @@ class _BookingResultsState extends State<BookingResults> {
         'notified': false,
       };
 
-      // แสดงข้อมูลการจองก่อนบันทึก
-      // print('Booking data: $bookingData');
-
       await FirebaseFirestore.instance.collection('Bookings').add(bookingData);
-
-      // setState(() {
-      //   isBookingInProgress = false; // ปิดสถานะการจอง
-      // });
 
       QuickAlert.show(
         context: context,
         type: QuickAlertType.success,
         text: 'การจองสำเร็จ',
         confirmBtnText: 'ตกลง',
+        confirmBtnColor: accentColor, // ปปรับสีปุ่มใน QuickAlert
         onConfirmBtnTap: () {
           Navigator.pushReplacement(
             context,
@@ -363,7 +470,6 @@ class _BookingResultsState extends State<BookingResults> {
         },
       );
     } catch (error) {
-      // แสดง error เพื่อดีบัก
       print('Error creating booking: $error');
       setState(() {
         isBookingInProgress =
@@ -376,6 +482,7 @@ class _BookingResultsState extends State<BookingResults> {
         confirmBtnText: 'ตกลง',
         type: QuickAlertType.error,
         text: 'ไม่สามารถบันทึกการจองได้ กรุณาลองใหม่อีกครั้ง',
+        confirmBtnColor: accentColor, // ปปรับสีปุ่มใน QuickAlert
       );
     }
   }

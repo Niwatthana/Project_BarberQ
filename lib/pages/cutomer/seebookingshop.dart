@@ -1,29 +1,29 @@
 import 'package:barberapp/loginpage.dart';
 import 'package:barberapp/pages/cutomer/bookinghistory.dart';
+import 'package:barberapp/pages/cutomer/bookingshop.dart';
 import 'package:barberapp/pages/cutomer/homecutomer.dart';
 import 'package:barberapp/pages/cutomer/profilecutomer.dart';
-import 'package:barberapp/pages/cutomer/seebookingshop.dart';
-import 'package:barberapp/pages/cutomer/timeslot.dart';
+import 'package:barberapp/pages/cutomer/seebookingbarber.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
-class BookingShop extends StatefulWidget {
-  const BookingShop({super.key});
+class SeeBookingShop extends StatefulWidget {
+  const SeeBookingShop({super.key});
 
   @override
-  State<BookingShop> createState() => _BookingShopState();
+  State<SeeBookingShop> createState() => _SeeBookingShopState();
 }
 
-class _BookingShopState extends State<BookingShop> {
-  int _selectedIndex = 2; // เริ่มต้นที่ไอคอน "Scissors" (index 2) ตามรูป
+class _SeeBookingShopState extends State<SeeBookingShop> {
+  int _selectedIndex =
+      3; // เริ่มต้นที่ไอคอน "Explore" (index 3) ตาม Bottom Navigation Bar
   List<Map<String, dynamic>?> shopList = [];
   bool hasExistingBooking = false;
-  bool isLoading = true;
+  bool isLoading = true; // ข้อ 2: Loading State
 
-  // กำหนดสีและสไตล์พื้นฐานในกรณีที่ไม่มี ThemeData จาก main.dart
   final Color primaryColor = Color(0xFF1B4B4B);
   final Color accentColor = Colors.redAccent;
 
@@ -37,6 +37,7 @@ class _BookingShopState extends State<BookingShop> {
     try {
       var userSnapshot =
           await FirebaseFirestore.instance.collection('BarberShops').get();
+
       if (userSnapshot.docs.isNotEmpty) {
         setState(() {
           shopList = userSnapshot.docs
@@ -47,6 +48,7 @@ class _BookingShopState extends State<BookingShop> {
         });
       }
     } catch (e) {
+      // ข้อ 8: Error Handling
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
       );
@@ -62,8 +64,11 @@ class _BookingShopState extends State<BookingShop> {
   }
 
   void sortShopList() {
-    shopList.sort((a, b) => (a?['shop_name']?.toString().toLowerCase() ?? '')
-        .compareTo(b?['shop_name']?.toString().toLowerCase() ?? ''));
+    shopList.sort((a, b) {
+      String nameA = a?['shop_name']?.toString().toLowerCase() ?? '';
+      String nameB = b?['shop_name']?.toString().toLowerCase() ?? '';
+      return nameA.compareTo(nameB);
+    });
   }
 
   void showLogoutDialog(BuildContext context) {
@@ -72,10 +77,11 @@ class _BookingShopState extends State<BookingShop> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15)), // ข้อ 3: Card Design
           title: Text('ออกจากระบบ', style: TextStyle(color: accentColor)),
-          content: Text('คุณต้องการออกจากระบบหรือไม่?'),
+          content: Text('คุณต้องการออกจากระบบหรือไม่?',
+              style: TextStyle(color: Colors.black)),
           actions: <Widget>[
             TextButton(
               child: Text('ยกเลิก', style: TextStyle(color: Colors.grey)),
@@ -85,8 +91,11 @@ class _BookingShopState extends State<BookingShop> {
               child: Text('ตกลง', style: TextStyle(color: Colors.green)),
               onPressed: () async {
                 await FirebaseAuth.instance.signOut();
-                Navigator.pushReplacement(context,
-                    MaterialPageRoute(builder: (context) => LoginPage()));
+                Navigator.of(context).pop();
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
               },
             ),
           ],
@@ -109,10 +118,8 @@ class _BookingShopState extends State<BookingShop> {
             context, MaterialPageRoute(builder: (context) => BookingHistory()));
         break;
       case 2:
-        if (!hasExistingBooking) {
-          Navigator.push(
-              context, MaterialPageRoute(builder: (context) => BookingShop()));
-        }
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => BookingShop()));
         break;
       case 3:
         Navigator.push(
@@ -133,6 +140,7 @@ class _BookingShopState extends State<BookingShop> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // ข้อ 9: Gradient Background
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -144,8 +152,9 @@ class _BookingShopState extends State<BookingShop> {
         child: SafeArea(
           child: Column(
             children: [
+              // ข้อ 10: Custom AppBar
               AppBar(
-                title: Text("ร้านตัดผม",
+                title: Text("ตารางร้านตัดผม",
                     style: TextStyle(color: Colors.white, fontSize: 20)),
                 backgroundColor: Colors.transparent,
                 elevation: 0,
@@ -163,9 +172,10 @@ class _BookingShopState extends State<BookingShop> {
                       switch (result) {
                         case 'history':
                           Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => BookingHistory()));
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => BookingHistory()),
+                          );
                           break;
                         case 'logout':
                           showLogoutDialog(context);
@@ -185,7 +195,7 @@ class _BookingShopState extends State<BookingShop> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: isLoading
+                  child: isLoading // ข้อ 2: Loading State
                       ? Center(
                           child: CircularProgressIndicator(color: accentColor))
                       : shopList.isEmpty
@@ -193,6 +203,7 @@ class _BookingShopState extends State<BookingShop> {
                               child: Text('ไม่พบร้าน',
                                   style: TextStyle(color: Colors.black87)))
                           : AnimationLimiter(
+                              // ข้อ 11: Animation
                               child: GridView.builder(
                                 gridDelegate:
                                     const SliverGridDelegateWithFixedCrossAxisCount(
@@ -211,25 +222,37 @@ class _BookingShopState extends State<BookingShop> {
                                     child: ScaleAnimation(
                                       child: FadeInAnimation(
                                         child: InkWell(
-                                          splashColor:
-                                              accentColor.withOpacity(0.3),
+                                          splashColor: accentColor.withOpacity(
+                                              0.3), // ข้อ 7: Feedback
                                           onTap: () {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => TimeSlot(
+                                                builder: (context) =>
+                                                    SeeBookingBarber(
                                                   barbershopname:
                                                       shop?['shop_name'],
                                                   barbershopid:
                                                       shop?['owner_id'],
+                                                  barbershopopen_hour:
+                                                      shop?['open_hour'],
+                                                  barbershopopen_minute:
+                                                      shop?['open_minute'],
+                                                  barbershopclose_hour:
+                                                      shop?['close_hour'],
+                                                  barbershopclose_minute:
+                                                      shop?['close_minute'],
                                                 ),
                                               ),
                                             );
+                                            print(
+                                                'Selected shop: ${shop?['shop_name']}');
                                           },
                                           child: Card(
                                             shape: RoundedRectangleBorder(
                                                 borderRadius:
-                                                    BorderRadius.circular(15)),
+                                                    BorderRadius.circular(
+                                                        15)), // ข้อ 3: Card Design
                                             elevation: 8,
                                             child: Container(
                                               decoration: BoxDecoration(
@@ -248,6 +271,7 @@ class _BookingShopState extends State<BookingShop> {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
+                                                  // ข้อ 5: Shop Image ด้วย CachedNetworkImage
                                                   ClipRRect(
                                                     borderRadius:
                                                         BorderRadius.vertical(
@@ -259,7 +283,7 @@ class _BookingShopState extends State<BookingShop> {
                                                           shop?['shop_img'] ??
                                                               '',
                                                       width: double.infinity,
-                                                      height: 117,
+                                                      height: 125,
                                                       fit: BoxFit.cover,
                                                       placeholder:
                                                           (context, url) =>
@@ -285,6 +309,7 @@ class _BookingShopState extends State<BookingShop> {
                                                             CrossAxisAlignment
                                                                 .start,
                                                         children: [
+                                                          // ข้อ 4: Typography
                                                           Text(
                                                             shop?['shop_name'] ??
                                                                 'ไม่ทราบชื่อร้าน',
@@ -389,36 +414,36 @@ class _BookingShopState extends State<BookingShop> {
             ),
             ListTile(
               leading: Icon(Icons.book_online,
-                  color: _selectedIndex == 2 ? accentColor : Colors.black),
+                  color: _selectedIndex == 1 ? accentColor : Colors.black),
               title: const Text('การจอง'),
-              selected: _selectedIndex == 2,
+              selected: _selectedIndex == 1,
               selectedTileColor: Colors.grey[300],
               onTap: () {
-                setState(() => _selectedIndex = 2);
+                setState(() => _selectedIndex = 1);
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => BookingShop()));
               },
             ),
             ListTile(
               leading: Icon(Icons.history,
-                  color: _selectedIndex == 3 ? accentColor : Colors.black),
+                  color: _selectedIndex == 2 ? accentColor : Colors.black),
               title: const Text('ประวัติการจอง'),
-              selected: _selectedIndex == 3,
+              selected: _selectedIndex == 2,
               selectedTileColor: Colors.grey[300],
               onTap: () {
-                setState(() => _selectedIndex = 3);
+                setState(() => _selectedIndex = 2);
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => BookingHistory()));
               },
             ),
             ListTile(
               leading: Icon(Icons.tab_outlined,
-                  color: _selectedIndex == 1 ? accentColor : Colors.black),
+                  color: _selectedIndex == 3 ? accentColor : Colors.black),
               title: const Text('ดูตารางช่าง'),
-              selected: _selectedIndex == 1,
+              selected: _selectedIndex == 3,
               selectedTileColor: Colors.grey[300],
               onTap: () {
-                setState(() => _selectedIndex = 1);
+                setState(() => _selectedIndex = 3);
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => SeeBookingShop()));
               },

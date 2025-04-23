@@ -26,12 +26,56 @@ class _OwnershopState extends State<Ownershop> {
   final TextEditingController _latController = TextEditingController();
   final TextEditingController _longController = TextEditingController();
 
+  final List<String> hours =
+      List.generate(15, (index) => (index + 8).toString().padLeft(2, '0'));
+  final List<String> minutes = ['00', '30'];
+
+  String? selectedOpenHour;
+  String? selectedOpenMinute;
+  String? selectedCloseHour;
+  String? selectedCloseMinute;
+  String errorMessage = '';
+
   Uint8List? _image;
   File? selectedImage;
   int _selectedIndex = 0;
   bool _isLoading = false;
   String? _imageUrl; // Variable to store the image URL
   double lat = 0, long = 0;
+
+  // void validateTime() {
+  //   try {
+  //     if (selectedOpenHour != null &&
+  //         selectedOpenMinute != null &&
+  //         selectedCloseHour != null &&
+  //         selectedCloseMinute != null) {
+  //       int openHour = int.parse(selectedOpenHour!);
+  //       int openMinute = int.parse(selectedOpenMinute!);
+  //       int closeHour = int.parse(selectedCloseHour!);
+  //       int closeMinute = int.parse(selectedCloseMinute!);
+
+  //       // ตรวจสอบว่าเวลาเปิดต้องน้อยกว่าเวลาปิด
+  //       if (openHour < closeHour ||
+  //           (openHour == closeHour && openMinute < closeMinute)) {
+  //         setState(() {
+  //           errorMessage = ''; // ไม่มีปัญหา
+  //         });
+  //       } else {
+  //         setState(() {
+  //           errorMessage = 'เวลาเปิดต้องน้อยกว่าเวลาปิด';
+  //         });
+  //       }
+  //     } else {
+  //       setState(() {
+  //         errorMessage = 'กรุณาเลือกเวลาเปิดและเวลาปิดให้ครบถ้วน';
+  //       });
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       errorMessage = 'กรุณาเลือกเวลาให้ถูกต้อง';
+  //     });
+  //   }
+  // }
 
   Future<void> fetchOwnerShopData() async {
     try {
@@ -47,11 +91,14 @@ class _OwnershopState extends State<Ownershop> {
           _telController.text = data['tel'];
           _addressController.text = data['address'];
           _imageUrl = data['shop_img'];
-
           lat = double.parse(data['latitude']);
           long = double.parse(data['longitude']);
           _latController.text = lat.toString();
           _longController.text = long.toString();
+          selectedOpenHour = data['open_hour'];
+          selectedOpenMinute = data['open_minute'];
+          selectedCloseHour = data['close_hour'];
+          selectedCloseMinute = data['close_minute'];
         });
       } else {
         getPosition();
@@ -72,15 +119,31 @@ class _OwnershopState extends State<Ownershop> {
     initialize();
   }
 
+  // void getPosition() async {
+  //   Position position = await _determinePosition();
+  //   print(position.latitude);
+  //   setState(() {
+  //     lat = position.latitude;
+  //     long = position.longitude;
+  //     _latController.text = lat.toString();
+  //     _longController.text = long.toString();
+  //   });
+  // }
   void getPosition() async {
-    Position position = await _determinePosition();
-    print(position.latitude);
-    setState(() {
-      lat = position.latitude;
-      long = position.longitude;
-      _latController.text = lat.toString();
-      _longController.text = long.toString();
-    });
+    try {
+      Position position = await _determinePosition();
+      setState(() {
+        lat = position.latitude;
+        long = position.longitude;
+        _latController.text = lat.toString();
+        _longController.text = long.toString();
+      });
+    } catch (error) {
+      // Show user-friendly error message
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('ไม่สามารถดึงตำแหน่งปัจจุบันได้: $error'),
+      ));
+    }
   }
 
   Future<Position> _determinePosition() async {
@@ -134,11 +197,13 @@ class _OwnershopState extends State<Ownershop> {
                 case 'history':
                   // Navigate to customer booking history page
                   Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => OwnerProfile(
-                                docid: FirebaseAuth.instance.currentUser!.uid,
-                              )));
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OwnerProfile(
+                        docid: FirebaseAuth.instance.currentUser!.uid,
+                      ),
+                    ),
+                  );
                   break;
                 case 'logout':
                   showLogoutDialog(context);
@@ -159,7 +224,6 @@ class _OwnershopState extends State<Ownershop> {
         ],
       ),
       body: Container(
-        // height: 700,
         padding: EdgeInsets.only(top: 15),
         decoration: BoxDecoration(
           color: Color(0xFFEDECF2),
@@ -168,8 +232,8 @@ class _OwnershopState extends State<Ownershop> {
             topRight: Radius.circular(35),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: ListView(
+          shrinkWrap: true,
           children: [
             Center(
               child: GestureDetector(
@@ -201,8 +265,9 @@ class _OwnershopState extends State<Ownershop> {
                             )
                           : Container(
                               decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(50)),
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(50),
+                              ),
                               width: 100,
                               height: 100,
                               child: Icon(
@@ -215,8 +280,91 @@ class _OwnershopState extends State<Ownershop> {
             ),
             SizedBox(height: 10),
             Text(
+              'เลือกเวลาเปิดร้าน',
+              style: TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                DropdownButton<String>(
+                  hint: Text('เลือกเวลา'),
+                  value: selectedOpenHour,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedOpenHour = newValue;
+                    });
+                  },
+                  items: hours.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ),
+                DropdownButton<String>(
+                  hint: Text('เลือกนาที'),
+                  value: selectedOpenMinute,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedOpenMinute = newValue;
+                    });
+                  },
+                  items: minutes.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            Text(
+              'เลือกเวลาปิดร้าน',
+              style: TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                DropdownButton<String>(
+                  hint: Text('เลือกเวลา'),
+                  value: selectedCloseHour,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedCloseHour = newValue;
+                    });
+                  },
+                  items: hours.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ),
+                DropdownButton<String>(
+                  hint: Text('เลือกนาที'),
+                  value: selectedCloseMinute,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedCloseMinute = newValue;
+                    });
+                  },
+                  items: minutes.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            Text(
               'ชื่อร้าน',
               style: TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
             ),
             SizedBox(height: 10),
             TextField(
@@ -230,6 +378,7 @@ class _OwnershopState extends State<Ownershop> {
             Text(
               'เบอร์โทร',
               style: TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
             ),
             SizedBox(height: 10),
             TextField(
@@ -243,6 +392,7 @@ class _OwnershopState extends State<Ownershop> {
             Text(
               'รายละเอียดร้าน',
               style: TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
             ),
             SizedBox(height: 10),
             TextField(
@@ -253,13 +403,14 @@ class _OwnershopState extends State<Ownershop> {
                 border: OutlineInputBorder(),
               ),
             ),
-            // SizedBox(height: 20),
+            SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'ตำแหน่งที่ตั้ง',
                   style: TextStyle(fontSize: 18),
+                  textAlign: TextAlign.center,
                 ),
                 ElevatedButton.icon(
                   onPressed: getPosition,
@@ -275,16 +426,16 @@ class _OwnershopState extends State<Ownershop> {
               decoration: InputDecoration(label: Text("ละติจูด")),
             ),
             TextFormField(
-                controller: _longController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(label: Text("ละติจูด"))),
-            Spacer(),
+              controller: _longController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(label: Text("ลองจิจูด")),
+            ),
+            SizedBox(height: 10),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
                 ElevatedButton(
                   onPressed: () {
-                    // handle submit
                     Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
@@ -309,8 +460,6 @@ class _OwnershopState extends State<Ownershop> {
                           style: TextStyle(color: Colors.black, fontSize: 18),
                         ),
                 ),
-                const Spacer(),
-                // showownershop(),
               ],
             ),
           ],
@@ -368,6 +517,7 @@ class _OwnershopState extends State<Ownershop> {
                 setState(() {
                   _selectedIndex = 3;
                 });
+
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => Ownerhair()));
               },
@@ -482,6 +632,42 @@ class _OwnershopState extends State<Ownershop> {
     });
 
     try {
+      // ตรวจสอบเวลาเปิด-ปิด
+      if (selectedOpenHour != null &&
+          selectedOpenMinute != null &&
+          selectedCloseHour != null &&
+          selectedCloseMinute != null) {
+        int openHour = int.parse(selectedOpenHour!);
+        int openMinute = int.parse(selectedOpenMinute!);
+        int closeHour = int.parse(selectedCloseHour!);
+        int closeMinute = int.parse(selectedCloseMinute!);
+
+        // เช็คว่าเวลาเปิดต้องน้อยกว่าเวลาปิด
+        if (!(openHour < closeHour ||
+            (openHour == closeHour && openMinute < closeMinute))) {
+          // ถ้าเงื่อนไขไม่ผ่าน ให้แสดงข้อความแจ้งเตือนแล้วหยุดการบันทึก
+          setState(() {
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('เวลาเปิดต้องน้อยกว่าเวลาปิด'),
+            duration: Duration(seconds: 2),
+          ));
+          return;
+        }
+      } else {
+        // ถ้าเวลาเปิด-ปิดไม่ถูกเลือกครบ ให้แสดงข้อความแจ้งเตือน
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('กรุณาเลือกเวลาเปิดและเวลาปิดให้ครบถ้วน'),
+          duration: Duration(seconds: 2),
+        ));
+        return;
+      }
+
+      // ดำเนินการบันทึกรูปภาพและข้อมูลต่อไป
       if (selectedImage != null) {
         print('check selected image');
         // Upload image to Firebase Storage
@@ -495,9 +681,8 @@ class _OwnershopState extends State<Ownershop> {
 
         UploadTask uploadTask = ref.putFile(selectedImage!, metadata);
         TaskSnapshot taskSnapshot = await uploadTask.whenComplete(() {});
-        // String imageUrl = await taskSnapshot.ref.getDownloadURL();
-        // Get download URL
         String downloadUrl = await taskSnapshot.ref.getDownloadURL();
+
         // Save data to Firestore
         DocumentReference docRef = FirebaseFirestore.instance
             .collection('BarberShops')
@@ -510,9 +695,12 @@ class _OwnershopState extends State<Ownershop> {
           'address': _addressController.text,
           'latitude': _latController.text,
           'longitude': _longController.text,
+          'open_hour': selectedOpenHour,
+          'open_minute': selectedOpenMinute,
+          'close_hour': selectedCloseHour,
+          'close_minute': selectedCloseMinute,
         });
 
-        // Set the uploaded image URL to the state variable
         setState(() {
           _imageUrl = downloadUrl;
         });
@@ -526,31 +714,23 @@ class _OwnershopState extends State<Ownershop> {
           'address': _addressController.text,
           'latitude': _latController.text,
           'longitude': _longController.text,
+          'open_hour': selectedOpenHour,
+          'open_minute': selectedOpenMinute,
+          'close_hour': selectedCloseHour,
+          'close_minute': selectedCloseMinute, // เพิ่มเวลาปิดร้าน
         });
       }
 
-      // Perform any additional logic here (e.g., saving details to Firestore)
-      // Example:
-      // await FirebaseFirestore.instance.collection('shops').add({
-      //   'details': _detailsController.text,
-      //   'imageUrl': _imageUrl,
-      // });
-
-      // Clear the input fields and reset the state
-      // _addressController.clear();
       setState(() {
-        // _image = null;
         selectedImage = null;
         _isLoading = false;
       });
 
-      // Show a success message or navigate to another screen
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
         duration: Duration(seconds: 2),
       ));
     } catch (error) {
-      // Handle any errors that occur during the upload process
       print('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: $error');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('เกิดข้อผิดพลาดในการบันทึกข้อมูล'),
